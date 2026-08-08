@@ -7,7 +7,10 @@ Agent map: [`docs/agent/INDEX.md`](docs/agent/INDEX.md). Human doc map:
 
 ## Context budget (agents)
 
-### Default open set
+### Start here (small by design)
+
+Open this file, `STATE.md`, and `docs/agent/INDEX.md` first. The other paths
+below are conditional and should be opened only when the task needs them.
 
 1. This file (short policy)
 2. [`STATE.md`](STATE.md)
@@ -24,8 +27,7 @@ Agent map: [`docs/agent/INDEX.md`](docs/agent/INDEX.md). Human doc map:
 
 | Path | Why | When to open |
 |---|---|---|
-| Full [`registry.yaml`](registry.yaml) | Redundant with `by-id.json` | One `BY-###` via `rg` for notes / candidates / bridge_review |
-| Full [`landscape.yaml`](landscape.yaml) | Redundant with `by-id.json` | One `LAND-###` detail |
+| Full [`registry.yaml`](registry.yaml) | Redundant with `by-id.json` | One `BY-###`, `CLM-*`, or `LAND-*` via `rg` for notes / candidates / bridge_review |
 | [`docs/provenance/formalization-search.json`](docs/provenance/formalization-search.json) | Large discovery dump | Regenerating evidence or deep candidate audit |
 | [`ROADMAP.md`](ROADMAP.md) | Human strategy, not live tasking | Maintainer names roadmap work |
 | `AISafetyAtlas/Upstream/**` | Large vendored/collapsed proofs | Editing that formalization only |
@@ -87,15 +89,14 @@ proof. Detail: [`docs/guide/methodology.md`](docs/guide/methodology.md).
 
 - **Headline coverage:** reproduced registry formalizations with `EXACT` or
   `EQUIVALENT` only. `RELATED` does not increase the count.
-- **Which ledger takes your edit:**
-  | Ledger | Holds | Note |
+- **Which record takes your edit:**
+  | Where | Holds | Note |
   |---|---|---|
-  | `registry.yaml` | the Brčić–Yampolskiy survey catalogue | **closed** at `BY-001`…`BY-044`; never add a `BY-045` |
-  | `landscape.yaml` | work the atlas develops, reproduces, or exposes itself | no fixed id space, no denominator; never headline coverage |
-  | `conjectures.yaml` | open questions with a compiling statement and no proof | never a theorem, never counted as one |
-  | `tasks.yaml` | the task board | `docs/guide/contributor-tasks.md` is **generated** from it — never edit the Markdown |
-  Source-neutrality here is two ledgers, not one neutral ledger. New work goes to
-  landscape or conjectures, not into the survey catalogue.
+  | `registry.yaml` survey claim rows | what the Brčić–Yampolskiy survey asserted | `BY-001`…`BY-044` is **closed**; never add `BY-045` |
+  | `registry.yaml` other claim rows | what any other source asserted | `CLM-` prefix; at least one `original_source_refs`; no survey-only fields (`paper_reference`, `survey_proof_assessment`, `formal_library_search`) |
+  | `registry.yaml` artifact rows | formalizations standing on their own | `LAND-` prefix, no `informal_claim`, never headline coverage |
+  | `conjectures.yaml` | open questions, compiling statement, no proof | never a theorem, never counted as one |
+  | `tasks.yaml` | the task board | `docs/guide/contributor-tasks.md` is **generated** — never edit the Markdown |
 - **Sources are `directory` or `work`.** A directory is a curated map (the survey
   itself, `mathforaisafety.org`, AISI, MAIS): never graded against, entry count
   never a metric. A `work` is statement-bearing and is the only thing a
@@ -104,6 +105,12 @@ proof. Detail: [`docs/guide/methodology.md`](docs/guide/methodology.md).
   `docs/provenance/formalization-search.json` — corpus, revision, date, and what
   the search did not cover. The six-corpus sweep is the `baseline-catalogue`
   profile for one source and is **not** inherited by new work.
+- **Applications:** a declaration stated over an AI-system model may record a
+  proposed `application` line — what it claims, over which model, and where the
+  statement comes from. It is discovery prose, not review evidence; only a
+  `REVIEWED` bridge supports a reviewed AI-system interpretation. Required on
+  every `BRIDGE`. Generated view:
+  [`docs/status/applications.md`](docs/status/applications.md).
 - **Layers:** (1) math theorem → (2) atlas interface → (3) AI-safety bridge →
   (4) real-system claim. Layers 3–4 need human review; Lean at 1–2 does not
   inherit an AI reading.
@@ -127,13 +134,16 @@ proof. Detail: [`docs/guide/methodology.md`](docs/guide/methodology.md).
 | `docs/bridges/` | Bridge review packages |
 | `docs/releases/` | Release evidence notes |
 
-After editing **any** ledger — `registry.yaml`, `landscape.yaml`,
-`conjectures.yaml`, `tasks.yaml`, or `docs/provenance/formalization-search.json` —
-run `python3 scripts/generate_registry_views.py` (updates `docs/status/*`,
-`docs/guide/contributor-tasks.md`, `docs/agent/by-id.json`,
-`docs/agent/search-summary.json`, README/STATE snippets, and the Lean registry and
-conjecture checks), then `./scripts/agent_gate.sh`. Paper ↔ formalization map:
-`docs/status/paper-coverage.md`. AI-safety literature map:
+After editing a maintained ledger — `registry.yaml`, `conjectures.yaml`, or
+`tasks.yaml` — run `python3 scripts/generate_registry_views.py` (updates
+`docs/status/*`, `docs/guide/contributor-tasks.md`, `docs/agent/by-id.json`,
+`docs/agent/search-summary.json`, README/STATE snippets, and the Lean registry
+and conjecture checks), then `./scripts/agent_gate.sh`. Do **not** hand-edit
+`docs/provenance/formalization-search.json`: when search terms, corpora, or pins
+change, rebuild that generated evidence with
+`scripts/update_formalization_search.py` using its pinned corpus arguments,
+then regenerate the views and run the gate. Paper ↔ formalization map:
+`docs/status/sources/`. AI-safety literature map:
 `docs/guide/related-literature.md`.
 
 ## Branch, version, and publication
@@ -153,7 +163,14 @@ Cheap preflight:
 
 ```console
 ./scripts/agent_gate.sh
+# repeated agent iterations: one-line success, full output on failure
+./scripts/agent_gate.sh --quiet
 ```
+
+The gate ends with `pytest tests/` (malformed-shape regressions) and
+`ty check scripts/ tests/`. Both are skipped with a notice when the tool is not
+installed, so the gate still runs without them; CI installs both, so neither is
+optional on a pull request. Install with `python3 -m pip install pytest ty`.
 
 Full green (Lean + axioms):
 

@@ -15,12 +15,12 @@ reviews, and release evidence are not mixed in one flat directory.
 Root project files still used for navigation: [`README.md`](../README.md),
 [`STATE.md`](../STATE.md), [`ROADMAP.md`](../ROADMAP.md),
 [`CONTRIBUTING.md`](../CONTRIBUTING.md), [`registry.yaml`](../registry.yaml),
-[`landscape.yaml`](../landscape.yaml).
+and [`conjectures.yaml`](../conjectures.yaml).
 
 ## Agent (token-cheap navigation)
 
-- [Agent index](agent/INDEX.md) — default open set and lookup recipes
-- [by-id.json](agent/by-id.json) — generated compact `BY-###` / `LAND-###` map
+- [Agent index](agent/INDEX.md) — small start set and targeted lookup recipes
+- [by-id.json](agent/by-id.json) — generated compact `BY-###` / `CLM-*` / `LAND-*` map
 - [search-summary.json](agent/search-summary.json) — generated compact discovery hits
 
 ## Guide (explain / process)
@@ -54,9 +54,8 @@ Regenerate with `python3 scripts/generate_registry_views.py` (also refreshes
 - [Formalization status](status/formalization-status.md)
 - [Landscape index](status/landscape-index.md) — atlas formalizations and public
   Lean surface
-- [Source reports](status/sources/) — per-source coverage, one report per
-  catalogued source
-- [Paper coverage](status/paper-coverage.md) — source papers ↔ formalizations ↔ atlas
+- [Source reports](status/sources/) — per catalogued source: papers, formalizations,
+  atlas declarations, bridge state
 
 ## Bridges (human semantic review)
 
@@ -65,7 +64,8 @@ Regenerate with `python3 scripts/generate_registry_views.py` (also refreshes
 
 ## Releases
 
-- [v0.4 release](releases/v0.4.md) — current published release (`0.4.0`, tagged)
+- [v0.5 release](releases/v0.5.md) — current published release (`0.5.0`, tagged)
+- [v0.4 release](releases/v0.4.md) — historical (`0.4.0`, tagged)
 - [v0.3 release](releases/v0.3.md) — historical (`0.3.x`)
 - [v0.2 release](releases/v0.2.md) — historical
 - [v0.1 release](releases/v0.1.md) — historical

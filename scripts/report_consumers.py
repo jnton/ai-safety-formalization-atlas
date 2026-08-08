@@ -55,26 +55,32 @@ from validate_current_state import (  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "registry.yaml"
-LANDSCAPE = ROOT / "landscape.yaml"
 LEAN_DIR = ROOT / "AISafetyAtlas"
 EXAMPLES_PREFIX = "AISafetyAtlas.Examples"
 
 
 def load_declarations() -> dict[str, str]:
-    """Every atlas declaration in either ledger, mapped to its origin ID."""
+    """Every atlas declaration in the registry ledger, mapped to its owning ID.
+
+    `validate_registry.py` enforces one owner per declaration. Assigning here
+    rather than overwriting keeps that guarantee visible: if the invariant ever
+    breaks, this raises instead of silently attributing the declaration to
+    whichever row happened to be serialized last.
+    """
     registry = json.loads(REGISTRY.read_text(encoding="utf-8"))
-    landscape = json.loads(LANDSCAPE.read_text(encoding="utf-8"))
     declarations: dict[str, str] = {}
     for result in registry["results"]:
         artifact = result["lean_artifact"]
         if artifact is None:
             continue
         for declaration in artifact["declarations"]:
-            declarations[declaration["atlas_declaration"]] = result["id"]
-    for entry in landscape["entries"]:
-        name = entry.get("atlas_declaration")
-        if name:
-            declarations.setdefault(name, entry["id"])
+            name = declaration["atlas_declaration"]
+            owner = declarations.setdefault(name, result["id"])
+            if owner != result["id"]:
+                raise SystemExit(
+                    f"report_consumers: {name} is claimed by both {owner} and "
+                    f"{result['id']}; run scripts/validate_registry.py"
+                )
     return declarations
 
 

@@ -59,27 +59,36 @@ would need to contain its own hash. Publication audits should establish the
 reachability of the registry's release ref, which then anchors every `IN_TREE`
 record in that tree.
 
-## Two ledgers, and what that means for source-neutrality
+## One ledger, two kinds of row
 
-Source-neutrality here is implemented as **two ledgers, not as one neutral
-ledger**. Saying so plainly matters, because the alternative reading — that the
-canonical registry itself became source-agnostic — is false and a reader can
-check it in ten seconds.
+`registry.yaml` holds every result. A row carrying `informal_claim` is a **claim**
+— something a source asserted — and must supply the claim fields and a bridge
+status. A row without one is an **artifact**: a formalization standing on its own
+account, using the `LAND-` prefix, forbidden from carrying claim fields, and
+required to record at least one formalization, since otherwise it asserts
+nothing.
 
-[`registry.yaml`](../../registry.yaml) is structurally the Brčić–Yampolskiy
-catalogue: the validator requires contiguous ids `BY-001`…`BY-044` matching that
-source's `expected_result_count`. It is a closed catalogue of one source, and it
-is not where new work goes. [`landscape.yaml`](../../landscape.yaml) holds
-results the workbench develops, reproduces, or exposes on its own account, with
-no source-shaped id space and no fixed size;
-[`conjectures.yaml`](../../conjectures.yaml) holds open questions.
+The prefix says what a row is, not where it came from. `BY-###` is the closed
+survey block, `CLM-*` is a claim catalogued from any other source and must name
+that provenance in `original_source_refs`, `LAND-*` is an artifact. Only survey
+rows carry `paper_reference`, `survey_proof_assessment`,
+and `formal_library_search`: those record how one survey presented and searched
+its own rows, and they are questions another source's claim cannot answer.
+Requiring them everywhere meant a real AISI or MAIS claim could only be admitted
+by inventing survey vocabulary for it — the ledger would render as source-neutral
+while the schema stayed survey-shaped.
 
-What the de-anchoring changed is therefore **what is counted and how the atlas is
-navigated**, not the shape of the older ledger: headline metrics are absolute
-rather than fractions of 44, sources are split into directories and works with
-neither privileged, and the primary index is
-[by mathematical area](../status/by-area.md) spanning both ledgers. Nobody should
-be adding a `BY-045`; new work belongs in the landscape or the conjecture ledger.
+There were two files. A landscape entry and a registry `formalizations[]` record
+shared five fields outright and duplicated two more concepts under different
+names, so the split modelled one thing twice. Its justification was that
+landscape must never increase the statement-match count, which stopped being a
+concern when the counts stopped having denominators.
+
+**Closure belongs to the source, not to the file.** The Brčić–Yampolskiy block
+must stay contiguous `BY-001`…`BY-044` and complete, because that catalogue is
+finished. Everything else is open: artifact rows, and claims from any other
+catalogued source, neither of which inherits the six-corpus sweep — that sweep is
+the `baseline-catalogue` profile of one source.
 
 ## Parsimony and source roles
 
@@ -102,13 +111,13 @@ revision, the declaration itself, the license, and, where practical, a local
 build.
 
 Relevant formalizations outside the survey inventory are recorded in
-[`landscape.yaml`](../../landscape.yaml) (machine-readable) and narrated in the
+`registry.yaml` (machine-readable) and narrated in the
 external-evidence documentation. The generated
 [landscape index](../status/landscape-index.md) lists them. Landscape entries do **not**
 enter survey-coverage counts. A landscape result may appear on the public Lean
 root import (for example attribution impossibility) only when it is listed in
-`landscape.yaml` with `root_import: true`. Promoting a landscape item into
-`registry.yaml` as survey coverage still requires the normal admission checks.
+`root_import: true`. Turning an artifact row into a claim row still requires the
+normal admission checks.
 
 ## Formal-library discovery evidence
 
@@ -149,7 +158,7 @@ standard library. This is a **baseline classical corpus pass**, not a complete
 search of all formalizations: third-party Lean packages (for example
 FormalizedFormalLogic/Foundation, KolmogorovMathlib, SocialChoiceLean, DASH)
 are outside those trees and must be recorded via `candidate_formalizations` or
-`landscape.yaml` when discovered manually. The query terms, corpus versions,
+`registry.yaml` when discovered manually. The query terms, corpus versions,
 per-query file counts, and representative candidate paths are retained in
 [`formalization-search.json`](../provenance/formalization-search.json).
 
@@ -161,52 +170,12 @@ formalization exists anywhere. The evidence is rebuilt with
 `scripts/update_formalization_search.py`; the registry validator rejects drift
 between its queries, candidate corpora, and the generated evidence.
 
-## Source coverage percentage
-
-A row may carry an optional `source_coverage` block recording how much of its
-primary source has been formalized. It is a **descriptive progress indicator, not
-a coverage claim**: `relationship` on a formalization record remains the only
-thing that gates headline `EXACT`/`EQUIVALENT` counting, and a row can be
-`RELATED` at any percentage.
-
-The denominator is mechanical so the figure can be rechecked: **numbered results
-in the primary source** (theorems, propositions, lemmas, conjectures,
-definitions). `basis` must name the **edition** counted, since preprint and
-camera-ready numbering can differ; where an official version exists, count that
-one. A result whose statement has not been read is `uncovered`, never `covered`
-on the strength of a plausible-looking local declaration. Neither lines nor
-pages nor judgement of importance. Conjectures remain in the denominator and
-stay `uncovered` until the atlas proves the stated proposition; being labelled a
-conjecture is not itself grounds for exclusion.
-
-`covered_items` and `uncovered_items` are structured records. Every covered item
-names one or more Lean declarations, gives its `EXACT`, `EQUIVALENT`, or
-`RELATED` relationship, and explains any abstraction in `note`. Every named
-declaration must have a formalization record on the same row with the same
-relationship. Generated `Registry.lean` checks declaration existence. Uncovered
-items record an `item` and `reason`. The list lengths must match `covered` and
-`total - covered`; `percent` must equal `round(100 * covered / total)`.
-
-Zero coverage without formalizations stays legal, since a row may be counted
-against its source before any work exists.
-
-`excluded_items` removes results from the denominator and must give a reason for
-each. Legitimate reasons include an informal umbrella whose formal content is
-counted elsewhere, a semi-formal precursor superseded by a separately counted
-rigorous result, and a result cited from a different paper and mapped to a
-different row. Exclusions are visible precisely so they can be disputed.
-
-**Percentages are not comparable across rows.** Eighty percent of a nine-page
-conference paper is not eighty percent of a monograph, and a row's remaining
-percent may be its most important part. Do not average them or rank rows by them.
-
 ## Progress and bridge status
 
-`progress_status` deliberately has only two values. `MAPPED` means the survey
-row and its discovery evidence are recorded but the atlas exposes no Lean
-declaration for it. `LEAN_AVAILABLE` means the row exposes at least one compiled
-atlas Lean declaration. External reproduction is recorded on each formalization
-record rather than duplicated in progress status.
+Whether a row has Lean behind it is read from the row, not stored beside it: a
+`lean_artifact` is present or it is not. There was a `progress_status` field
+duplicating that fact, and a validator asserting the two agreed — a stored copy
+of something already computable is a second thing to keep in sync for no gain.
 
 `ai_bridge_status` is separate and has a defined lifecycle vocabulary:
 `HUMAN_REVIEW`, `STATEMENT_REVIEWED`, and `REVIEWED`. `HUMAN_REVIEW` (the
@@ -223,6 +192,13 @@ immutable release audit (`scripts/audit_release_v0_1.py` via
 [`v0.1.md`](../releases/v0.1.md)), not by ordinary current-state validation, so a genuine
 future graduation can be recorded without editing a timeless validator.
 
+A declaration stated over an AI-system model may also carry an `application` line.
+That line is a proposed reading for discovery and contributor discussion; it is
+not evidence that the theorem applies to a deployed or real-world system. The
+generated [`applications.md`](../status/applications.md) view makes these lines
+findable and displays the separate bridge status. Only a `REVIEWED` bridge, with
+its review record and evidence, supports a reviewed AI-system interpretation.
+
 A result may also carry `candidate_formalizations`: structured, non-coverage
 leads for a formalization that has been discovered but not yet accepted. Each
 lead records `repository`, `revision`, `framework`, `license`, `declaration`,
@@ -230,12 +206,30 @@ lead records `repository`, `revision`, `framework`, `license`, `declaration`,
 `relationship_review` (`PENDING`/`EXACT`/`EQUIVALENT`/`RELATED`/`DISTINCT`/
 `UNCLEAR`), and `notes`. A candidate lead never substitutes for a
 `formalizations` record and never changes headline coverage; promotion still
-requires reproduction and statement-level classification.
+requires reproduction and statement-level classification. Its `declaration`
+field is intentionally free-form lead prose: it may name several files or
+theorems while the source is still being inspected. The one-identifier-per-list-
+entry rule below applies only after promotion to a `formalizations` record or
+to `lean_artifact.declarations[*].source_declarations`.
 
 Each entry in `lean_artifact.declarations` classifies one atlas declaration as
 `REFERENCE`, `WRAPPER`, `NEW_PROOF`, or `BRIDGE` and records its source
-declaration(s). Classification is per declaration because one survey result may
+declaration(s) when it adapts or exposes an upstream result. An atlas-authored
+`NEW_PROOF` may intentionally have an empty source-declaration list; wrappers,
+references, and bridges must name what they expose or extend. Classification is
+per declaration because one survey result may
 expose both a thin wrapper and a nonredundant representation bridge.
+
+For a formalization record, `module` names the module or file in the repository
+identified by that record's `repository`; `modules` is the list form for a
+multi-file development. When an external Lean development is
+adapted into the atlas, `atlas_module` separately names the local atlas facade
+that exposes the recorded declaration. This prevents an atlas path from being
+published as if it existed in an upstream repository; the validator checks both
+the external provenance spelling and the local atlas module. Use `declaration`
+for one declaration name and `declarations` for several; each list entry is one
+identifier, with no packing punctuation or whitespace. The same one-name-per-
+entry rule applies to `lean_artifact.declarations[*].source_declarations`.
 
 Current status tables and registry declaration-presence checks are generated by
 `scripts/generate_registry_views.py`. The separate hand-written public-API

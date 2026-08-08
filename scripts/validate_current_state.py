@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import re
 import sys
+from typing import NoReturn
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,15 +20,20 @@ IMPORT_LINE = re.compile(r"^\s*(?:public\s+)?import\s+(.+)$", re.MULTILINE)
 LOCAL_MODULE = re.compile(r"^AISafetyAtlas(?:\.[A-Za-z_][A-Za-z0-9_]*)*$")
 
 
-def require(condition: bool, message: str) -> None:
+def fail(message: str) -> NoReturn:
+    print(f"current-state validation error: {message}", file=sys.stderr)
+    raise SystemExit(1)
+
+
+def require(condition: object, message: str) -> None:
     if not condition:
-        print(f"current-state validation error: {message}", file=sys.stderr)
-        raise SystemExit(1)
+        fail(message)
 
 
 def read_version(path: Path, pattern: str, label: str) -> str:
     match = re.search(pattern, path.read_text(encoding="utf-8"))
-    require(match is not None, f"could not read version from {label}")
+    if match is None:
+        fail(f"could not read version from {label}")
     return match.group(1)
 
 
@@ -99,8 +105,48 @@ def lean_module_name(path: Path) -> str:
     return ".".join(path.relative_to(ROOT).with_suffix("").parts)
 
 
+def lean_import_header(source: str) -> str:
+    """Return the leading region of a Lean file that can contain imports.
+
+    Lean requires every `import` to precede the first command, so the import
+    graph is determined by a few hundred bytes at the top of each file. Masking
+    comments and strings across the whole file to find them cost 0.35s per
+    validator run — over a hundred runs in one gate pass, on a tree whose
+    largest vendored file is 141 KB and entirely irrelevant to its own imports.
+
+    Scanning stops at the first line that is neither blank, a comment, `module`,
+    `prelude`, `set_option`, nor an import. Block comments are tracked so a
+    `/-! … -/` header does not end the scan early.
+    """
+    lines: list[str] = []
+    depth = 0
+    for line in source.splitlines():
+        stripped = line.strip()
+        if depth:
+            lines.append(line)
+            depth += stripped.count("/-") - stripped.count("-/")
+            continue
+        if stripped.startswith("/-"):
+            lines.append(line)
+            depth += stripped.count("/-") - stripped.count("-/")
+            continue
+        if (
+            not stripped
+            or stripped.startswith("--")
+            or stripped.startswith("module")
+            or stripped.startswith("prelude")
+            or stripped.startswith("set_option")
+            or stripped.startswith("import")
+            or stripped.startswith("public import")
+        ):
+            lines.append(line)
+            continue
+        break
+    return "\n".join(lines)
+
+
 def local_imports(source: str, local_modules: set[str]) -> set[str]:
-    code = lean_code_without_comments_or_strings(source)
+    code = lean_code_without_comments_or_strings(lean_import_header(source))
     imports: set[str] = set()
     for match in IMPORT_LINE.finditer(code):
         imports.update(
@@ -127,6 +173,44 @@ def explicit_lean_build_targets() -> list[str]:
         for line in LEAN_BUILD_TARGETS.read_text(encoding="utf-8").splitlines()
         if line.strip() and not line.lstrip().startswith("#")
     ]
+
+
+def validate_gate_witnesses() -> None:
+    """Keep published theorem gates paired with compiled concrete witnesses."""
+    witness_files = {
+        "AISafetyAtlas/Examples/NonVacuity.lean": [
+            r"example\s*:\s*AISafetyAtlas\.Verification\.Nontrivial\b",
+            r"example\s*:\s*AISafetyAtlas\.Verification\.AgentBehavior\.SpecNontrivial\b",
+            r"example\s*:\s*AISafetyAtlas\.Explainability\.RashomonProperty\b",
+        ],
+        "AISafetyAtlas/Examples/WorkbenchConsumers.lean": [
+            r"example\s*:\s*HalfMaximalRegretBound\b",
+        ],
+        "AISafetyAtlas/Examples/SixTargets.lean": [
+            r"example\s*:\s*Algorithm\s+Unit\s+Unit\s+1\b",
+        ],
+    }
+    targets = set(explicit_lean_build_targets())
+    target_requirements = {
+        "AISafetyAtlas.Examples.NonVacuity",
+        "AISafetyAtlas.Examples.WorkbenchConsumers",
+        "AISafetyAtlas.Examples.SixTargets",
+    }
+    require(
+        target_requirements <= targets,
+        "gate-witness modules are not explicit Lean build targets",
+    )
+    for relative_path, patterns in witness_files.items():
+        path = ROOT / relative_path
+        require(path.is_file(), f"missing gate-witness file: {relative_path}")
+        source = lean_code_without_comments_or_strings(
+            path.read_text(encoding="utf-8")
+        )
+        for pattern in patterns:
+            require(
+                re.search(pattern, source) is not None,
+                f"missing compiled gate witness in {relative_path}: {pattern}",
+            )
 
 
 def validate_scanner_examples() -> None:
@@ -171,7 +255,7 @@ def validate_lean_build_closure(lean_files: list[Path]) -> None:
     }
     root_closure = dependency_closure("AISafetyAtlas", graph)
     targets = explicit_lean_build_targets()
-    require(targets, "Lean build-target manifest is empty")
+    require(bool(targets), "Lean build-target manifest is empty")
     require(len(targets) == len(set(targets)), "Lean build-target manifest has duplicates")
     require(
         all(LOCAL_MODULE.fullmatch(target) for target in targets),
@@ -196,6 +280,7 @@ def validate_lean_build_closure(lean_files: list[Path]) -> None:
 
 def main() -> None:
     validate_scanner_examples()
+    validate_gate_witnesses()
 
     required_files = [
         "README.md",
@@ -219,6 +304,8 @@ def main() -> None:
         "AISafetyAtlas/Examples/PublicAPI.lean",
         "AISafetyAtlas/Examples/Registry.lean",
         "AISafetyAtlas/Examples/Robot.lean",
+        "AISafetyAtlas/Examples/NonVacuity.lean",
+        "AISafetyAtlas/Examples/WorkbenchConsumers.lean",
         "AISafetyAtlas/Verification/Robot.lean",
         "AISafetyAtlas/Upstream/Arrow.lean",
         "AISafetyAtlas/Examples/HaltingExample.lean",
@@ -232,7 +319,6 @@ def main() -> None:
         "docs/status/formalization-status.md",
         "docs/status/sources/brcic-yampolskiy-2023.md",
         "docs/status/landscape-index.md",
-        "docs/status/paper-coverage.md",
         "docs/agent/INDEX.md",
         "docs/agent/by-id.json",
         "docs/agent/search-summary.json",
@@ -245,9 +331,7 @@ def main() -> None:
         "docs/releases/v0.2.md",
         "scripts/check_docs_paths.py",
         "scripts/agent_gate.sh",
-        "landscape.yaml",
         "scripts/generate_registry_views.py",
-        "scripts/validate_landscape.py",
         "scripts/check_print_axioms.py",
         "scripts/lean_build_targets.txt",
         "scripts/update_formalization_search.py",
@@ -262,6 +346,13 @@ def main() -> None:
         "AISafetyAtlas/Upstream/LICENSE",
         "AISafetyAtlas/Upstream/KolmogorovMathlib/LICENSE",
         "AISafetyAtlas/Upstream/Attribution/LICENSE",
+        # The MIT notice for the vendored Gibbard-Satterthwaite proof. Apache-2.0
+        # is satisfied by the root LICENSE plus retained headers; MIT requires the
+        # notice itself to travel with the copy, and `vendor/SocialChoiceLean/` is
+        # a provenance mirror nothing imports — exactly the shape a parsimony pass
+        # prunes. LICENSE-NOTICE cites both of these by path.
+        "vendor/SocialChoiceLean/LICENSE",
+        "vendor/SocialChoiceLean/PROVENANCE.md",
         "AISafetyAtlas/Explainability.lean",
         "AISafetyAtlas/Upstream/KolmogorovMathlib/README.md",
         ".github/CODEOWNERS",
@@ -279,6 +370,18 @@ def main() -> None:
         "Apache License" in license_text and "Version 2.0" in license_text,
         "LICENSE is not Apache-2.0",
     )
+    # Existence alone let a licence file be emptied, or replaced with "All
+    # rights reserved", and still pass.
+    for relative_path, marker in (
+        ("AISafetyAtlas/Upstream/LICENSE", "Apache License"),
+        ("AISafetyAtlas/Upstream/KolmogorovMathlib/LICENSE", "Apache License"),
+        ("AISafetyAtlas/Upstream/Attribution/LICENSE", "Apache License"),
+        ("vendor/SocialChoiceLean/LICENSE", "MIT License"),
+    ):
+        require(
+            marker in (ROOT / relative_path).read_text(encoding="utf-8"),
+            f"{relative_path} does not carry its {marker} text",
+        )
 
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     normalized_readme = " ".join(readme.lower().split())
@@ -346,17 +449,11 @@ def main() -> None:
         f"missing release note docs/releases/v{minor_series}.md "
         f"for package version {lake_version}",
     )
-    # Landscape root-import surface must stay dual-listed (R6-3).
-    require(
-        (ROOT / "landscape.yaml").is_file(),
-        "landscape.yaml missing",
-    )
-
     print(
         "current state ok: required public files, Apache-2.0, disclaimer, "
         "complete Lean build closure, executable reproduction scripts, "
         "STATE snapshot + release-status markers, version/release coherence, "
-        "landscape ledger, and strict-trust Lean sources"
+        "and strict-trust Lean sources"
     )
 
 

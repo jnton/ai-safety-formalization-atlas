@@ -6,7 +6,7 @@ coverage estimation and triage.
 
 This is **not** the survey theorem inventory. Table-1 BY rows and classical
 sources are generated in
-[`../status/paper-coverage.md`](../status/paper-coverage.md). Some papers below
+[`../status/sources/`](../status/sources/). Some papers below
 also appear there as survey results; they still belong here as **literature** so
 AI-safety reading lists can be scanned in one place.
 
@@ -71,9 +71,16 @@ only a rename of Rice.
 
 | Paper (AI safety lit) | Catalog | Decision problem (1 line) | How addressed | Atlas hook | Survey row? | Notes |
 |---|---|---|---|---|---|---|
-| Melo, Máximo, Soma, Castro, [arXiv:2408.08995](https://arxiv.org/abs/2408.08995) (2024; Sci. Rep. 2025) | `atlas-ref-melo-2024` | Whether an arbitrary program always satisfices a fixed non-trivial I/O judge is undecidable (Rice / halting) | packaging | `AgentBehavior.no_behavioral_safety_verifier` · `LAND-MELO-001` | no (related lit only) | Property = “always passes judge”; **same Rice pattern as Alfonseca**, different named property |
+| Melo, Máximo, Soma, Castro, [arXiv:2408.08995](https://arxiv.org/abs/2408.08995) (2024; Sci. Rep. 2025) | `atlas-ref-melo-2024` | Whether an arbitrary program always satisfices a fixed non-trivial I/O judge is undecidable (Rice / halting) | packaging | `AgentBehavior.no_behavioral_safety_verifier` (owned by **BY-012**) | no (related lit only) | Property = “always passes judge”; **same Rice pattern as Alfonseca**, different named property |
 | Alfonseca et al., *Superintelligence cannot be contained* (JAIR 2021) | `survey-ref-056` | Perfect containment of a superintelligent program is undecidable; Rice on non-trivial TM properties (e.g. harm) | packaging-pattern | Pattern only: AgentBehavior / Rice **if** containment is modeled as a nontrivial extensional code property | **BY-025** (`MAPPED`, no Lean artifact) | **≈ Melo in method**, different *P*. **Do not read as BY-025 formalized.** No containment-named declaration; survey row still open. |
 | van Leeuwen & Wiedermann, *Impossibility Results for the Online Verification of Ethical and Legal Behaviour of Robots* (UU-PCS-2021-02, 2021) | `survey-ref-069` | No total algorithmic observer for always-*P* on robots with potentially unbounded memory, for non-trivial robot property *P* (Thm 1 / Cor 1) | related-formal | `Robot.action_safety_unverifiable` | **BY-033** | Cousin with **switching construction**; SPA via certificate; CT-3 2026-07-19: keep **RELATED**, bridge **REVIEWED** (scoped interpretation); model [`robot-verification-model.md`](robot-verification-model.md); CT-3 [`../bridges/ct3-robot-review-package.md`](../bridges/ct3-robot-review-package.md) |
+
+Retired 2026-08-08: ledger row `LAND-MELO-001`. It named the same Lean
+declaration as BY-012, so the ledger had two owners for one theorem, and its
+structured record described an arXiv paper as a reproduced Lean formalization.
+Melo et al. stays catalogued as the source work `atlas-ref-melo-2024` and is
+credited in the BY-012 notes and in the CT-4 bridge review package; earlier
+review evidence under `docs/bridges/` still cites the retired id.
 
 Add rows when triaging further AI-safety impossibility / verification papers.
 One line per decision problem and short notes.
@@ -119,13 +126,13 @@ Full model note: [`robot-verification-model.md`](robot-verification-model.md).
 ## How to estimate coverage
 
 1. **AI safety lit addressed?** → this table (`how addressed` column).  
-2. **Survey theorem inventory?** → [`paper-coverage.md`](../status/paper-coverage.md).  
+2. **Survey theorem inventory?** → [`sources/brcic-yampolskiy-2023.md`](../status/sources/brcic-yampolskiy-2023.md).
 3. A paper can appear in both (e.g. robot = lit here + BY-033 there); count
    **formalization status once** on the survey row for headline metrics.
 
 ## Pointers
 
-- Survey/paper formalization table: [`../status/paper-coverage.md`](../status/paper-coverage.md)
+- Survey/paper formalization table: [`../status/sources/brcic-yampolskiy-2023.md`](../status/sources/brcic-yampolskiy-2023.md)
 - BY-012 review: [`../bridges/review-by-012-agentbehavior.md`](../bridges/review-by-012-agentbehavior.md)
 - Robot model / CT-3: [`robot-verification-model.md`](robot-verification-model.md),
   [`../bridges/ct3-robot-review-package.md`](../bridges/ct3-robot-review-package.md)

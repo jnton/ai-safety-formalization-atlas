@@ -25,11 +25,26 @@ The contributor-facing priorities and selection principles are summarized in
 [`ROADMAP.md`](../../ROADMAP.md). This file retains the detailed review queue,
 research leads, and integration decisions behind that strategy.
 
+## Deliberately not automated
+
+- **Re-executing recorded reproductions.** `reproduced: true` means the ledger
+  declares reproduction evidence, not that the gate just rebuilt it; the status
+  page and [methodology](methodology.md) both say so. The scripts under
+  `scripts/reproduce_*.sh` need Isabelle, Docker, or an upstream toolchain, so
+  running them belongs in an opt-in or scheduled job, not in the cheap gate a
+  contributor runs on every edit. Open: build that job, or accept the
+  declaration as the trust boundary and leave it stated.
+
+  What the gate *does* check is that the command is a reproduction entry point
+  at all — a `scripts/reproduce_*.sh` that exists and is executable, or a
+  `lake build` naming a module in the tree. Before that rule, an external record
+  could carry `reproduced: true` with `build_command: "echo done"`.
+
 ## Human review
 
 - Revisit the public framing and scope disclaimer when coverage claims change
-  (see [`../releases/v0.4.md`](../releases/v0.4.md) for the current release
-  candidate's non-claims; older notes under `docs/releases/`).
+  (see [`../releases/v0.5.md`](../releases/v0.5.md) for the current release's
+  non-claims; older notes under `docs/releases/`).
 - Optional: external domain review of bridge packages beyond maintainer review.
 - Review source-level statements for the three survey-introduced proof sketches:
   unfairness of explainability, misaligned embodiment, and limited self-awareness.
@@ -135,7 +150,7 @@ current registry and public API so assimilation does not re-open completed work.
    debate is **reproduced** (`LAND-DEBATE-001`, CT-7, Path A build at upstream
    v4.8; `scripts/reproduce_debate.sh`). **Attribution impossibility** is
    **in-atlas** as `AISafetyAtlas.Explainability.attribution_impossibility`
-   and listed in [`landscape.yaml`](../../landscape.yaml) (`LAND-ATTR-001`; not
+   and listed in `registry.yaml` (`LAND-ATTR-001`; not
    BY-042/BY-029 coverage).
 4. **Survey-original / pen-and-paper AI claims** (unfairness of explainability,
    misaligned embodiment, limited self-awareness; uncontainability;

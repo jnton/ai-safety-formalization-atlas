@@ -8,7 +8,10 @@ import os
 from pathlib import Path
 import re
 import sys
+from typing import Any, NoReturn, cast
 from urllib.parse import urlsplit
+
+from validate_current_state import lean_code_without_comments_or_strings
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,9 +21,70 @@ PROJECT_REPOSITORY = "https://github.com/mbrcic/ai-safety-formalization-atlas"
 IN_TREE_VERSION = "IN_TREE"
 
 
-def fail(message: str) -> None:
+def fail(message: str) -> NoReturn:
     print(f"registry error: {message}", file=sys.stderr)
     raise SystemExit(1)
+
+
+def require_mapping(value: object, message: str) -> dict[str, Any]:
+    """Return `value` as a mapping, or fail with a reason a contributor can act on.
+
+    A ledger is edited by hand, so wrong shapes arrive routinely. Reaching
+    `.get` or `sorted` on one produced an AttributeError or TypeError — a
+    traceback in CI says only that the validator broke, not that the data did.
+    """
+    if not isinstance(value, dict):
+        fail(message)
+    # A JSON object is `dict[str, Any]`; `isinstance` can only narrow to
+    # `dict[Unknown, Unknown]`, whose key type defeats every later subscript.
+    return cast("dict[str, Any]", value)
+
+
+def require_text(value: object, message: str) -> str:
+    """Return `value` as a non-empty string, or fail. Whitespace is not content."""
+    if not isinstance(value, str) or not value.strip():
+        fail(message)
+    return value
+
+
+def require_text_list(value: object, message: str) -> list[str]:
+    """Return a list of non-empty strings, or fail without leaking a traceback."""
+    if not isinstance(value, list) or any(
+        not isinstance(item, str) or not item.strip() for item in value
+    ):
+        fail(message)
+    return cast("list[str]", value)
+
+
+def declaration_name(value: object, message: str) -> str:
+    name = require_text(value, message)
+    if any(character.isspace() for character in name) or any(
+        delimiter in name for delimiter in (";", ",")
+    ):
+        fail(
+            f"{message}; declaration names must be one identifier per list entry"
+        )
+    return name
+
+
+def declaration_names(value: object, message: str) -> list[str]:
+    """Validate declaration-name containers and reject packed prose.
+
+    A semicolon-separated blob defeats per-declaration provenance and makes
+    generated views unable to link or check individual names.  Keep the
+    delimiter out of the data model instead of trying to split arbitrary prose
+    in the validator.
+    """
+    names = require_text_list(value, message)
+    if not names:
+        fail(message)
+    if any(
+        any(character.isspace() for character in name)
+        or any(delimiter in name for delimiter in (";", ","))
+        for name in names
+    ):
+        fail(f"{message}; declaration names must be one identifier per list entry")
+    return names
 
 
 def valid_http_url(value: object) -> bool:
@@ -28,6 +92,114 @@ def valid_http_url(value: object) -> bool:
         return False
     parsed = urlsplit(value)
     return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+
+
+def lean_module_name(path: Path) -> str:
+    """Return the dotted Lean module name for a repository-relative source."""
+    return ".".join(path.relative_to(ROOT).with_suffix("").parts)
+
+
+def lean_import_header(source: str) -> str:
+    """Return the leading region of a Lean file that can contain imports.
+
+    Lean requires every `import` to precede the first command, so the import
+    graph is determined by a few hundred bytes at the top of each file. Masking
+    comments and strings across the whole file to find them cost 0.35s per
+    validator run — over a hundred runs in one gate pass, on a tree whose
+    largest vendored file is 141 KB and entirely irrelevant to its own imports.
+
+    Scanning stops at the first line that is neither blank, a comment, `module`,
+    `prelude`, `set_option`, nor an import. Block comments are tracked so a
+    `/-! … -/` header does not end the scan early.
+    """
+    lines: list[str] = []
+    depth = 0
+    for line in source.splitlines():
+        stripped = line.strip()
+        if depth:
+            lines.append(line)
+            depth += stripped.count("/-") - stripped.count("-/")
+            continue
+        if stripped.startswith("/-"):
+            lines.append(line)
+            depth += stripped.count("/-") - stripped.count("-/")
+            continue
+        if (
+            not stripped
+            or stripped.startswith("--")
+            or stripped.startswith("module")
+            or stripped.startswith("prelude")
+            or stripped.startswith("set_option")
+            or stripped.startswith("import")
+            or stripped.startswith("public import")
+        ):
+            lines.append(line)
+            continue
+        break
+    return "\n".join(lines)
+
+
+def read_lean_header(path: Path, chunk: int = 16384) -> str:
+    """Read only as much of a Lean file as its import header can occupy.
+
+    Complements `lean_import_header`: that bounds the scan, this bounds the I/O.
+    If the header consumes the whole chunk the file is re-read in full, so a very
+    long docstring cannot silently truncate the import graph.
+    """
+    with path.open("r", encoding="utf-8") as handle:
+        head = handle.read(chunk)
+        if len(head) < chunk:
+            return head
+    header = lean_import_header(head)
+    if len(header) < len(head):
+        return head
+    return path.read_text(encoding="utf-8")
+
+
+def local_imports(source: str, local_modules: set[str]) -> set[str]:
+    """Read local imports without treating external packages as atlas modules."""
+    source = lean_code_without_comments_or_strings(lean_import_header(source))
+    imports: set[str] = set()
+    for match in re.finditer(r"^\s*(?:public\s+)?import\s+(.+)$", source, re.M):
+        imports.update(
+            token for token in match.group(1).split() if token in local_modules
+        )
+    return imports
+
+
+def root_import_closure() -> tuple[set[str], set[str]]:
+    """Compute the actual local module closure of the public root facade.
+
+    The result-level ``root_import`` flag is published metadata, so it must be
+    checked against the same import graph that determines whether a declaration
+    is reachable from ``AISafetyAtlas``. Direct-import membership is not enough:
+    a facade may re-export a nested module through an intermediate import.
+    """
+    sources = {
+        lean_module_name(path): path
+        for path in (ROOT / "AISafetyAtlas").rglob("*.lean")
+    }
+    root = ROOT / "AISafetyAtlas.lean"
+    sources["AISafetyAtlas"] = root
+    modules = set(sources)
+    graph = {
+        module: local_imports(read_lean_header(path), modules)
+        for module, path in sources.items()
+    }
+    closure: set[str] = set()
+    pending = list(graph["AISafetyAtlas"])
+    while pending:
+        module = pending.pop()
+        if module in closure:
+            continue
+        closure.add(module)
+        pending.extend(graph.get(module, set()) - closure)
+    return modules, closure
+
+
+def normalize_module_name(value: str) -> str:
+    """Accept the historical slash/``.lean`` spelling as a module name."""
+    return value.removesuffix(".lean").replace("/", ".")
 
 
 SOURCE_ROLES = {"directory", "work"}
@@ -84,8 +256,9 @@ def validate_bridge_review(result_id: str, result: dict) -> None:
         if review is not None:
             fail(f"{result_id} is HUMAN_REVIEW and must not carry a bridge_review record")
         return
-    if not isinstance(review, dict):
-        fail(f"{result_id} bridge status {status} requires a bridge_review record")
+    review = require_mapping(
+        review, f"{result_id} bridge status {status} requires a bridge_review record"
+    )
     missing = BRIDGE_REVIEW_FIELDS - review.keys()
     if missing:
         fail(f"{result_id} bridge_review missing fields: {sorted(missing)}")
@@ -93,169 +266,21 @@ def validate_bridge_review(result_id: str, result: dict) -> None:
         review["interpretation_reviewed"], bool
     ):
         fail(f"{result_id} bridge_review review flags must be booleans")
-    if not review.get("reviewer") or not review.get("date") or not review.get("evidence"):
-        fail(f"{result_id} bridge_review must record reviewer, date, and evidence")
+    for field in ("reviewer", "date", "evidence"):
+        require_text(
+            review.get(field),
+            f"{result_id} bridge_review must record {field} as a non-empty string",
+        )
+    # A review is dated evidence. An unparseable date is a review nobody can
+    # place against the statement it reviewed.
+    if not ISO_DATE.fullmatch(review["date"]):
+        fail(f"{result_id} bridge_review date must be an ISO date: {review['date']!r}")
     if not review["statement_reviewed"]:
         fail(f"{result_id} graduated bridge status requires statement_reviewed to be true")
     if status == "REVIEWED" and not review["interpretation_reviewed"]:
         fail(f"{result_id} REVIEWED requires interpretation_reviewed to be true")
     if status == "STATEMENT_REVIEWED" and review["interpretation_reviewed"]:
         fail(f"{result_id} STATEMENT_REVIEWED must not claim interpretation_reviewed; use REVIEWED")
-
-SOURCE_COVERAGE_FIELDS = {
-    "covered",
-    "total",
-    "percent",
-    "basis",
-    "covered_items",
-    "uncovered_items",
-    "excluded_items",
-}
-SOURCE_COVERED_ITEM_FIELDS = {
-    "item",
-    "declarations",
-    "relationship",
-    "note",
-}
-SOURCE_UNCOVERED_ITEM_FIELDS = {"item", "reason"}
-SOURCE_COVERAGE_RELATIONSHIPS = {"EXACT", "EQUIVALENT", "RELATED"}
-
-
-def validate_source_coverage(result_id: str, result: dict) -> None:
-    """Optional descriptive progress indicator: how much of the primary source a
-    row's formalization covers. It is never a coverage claim; `relationship` on a
-    formalization record remains the only thing that gates headline counting, and
-    percentages are not comparable between rows."""
-    coverage = result.get("source_coverage")
-    if coverage is None:
-        return
-    if not isinstance(coverage, dict):
-        fail(f"{result_id} source_coverage must be an object")
-    missing = SOURCE_COVERAGE_FIELDS - coverage.keys()
-    if missing:
-        fail(f"{result_id} source_coverage missing fields: {sorted(missing)}")
-    covered, total = coverage["covered"], coverage["total"]
-    if not isinstance(covered, int) or not isinstance(total, int):
-        fail(f"{result_id} source_coverage covered and total must be integers")
-    if total <= 0 or covered < 0 or covered > total:
-        fail(f"{result_id} source_coverage needs 0 <= covered <= total and total > 0")
-    for key in ("covered_items", "uncovered_items", "excluded_items"):
-        if not isinstance(coverage[key], list):
-            fail(f"{result_id} source_coverage {key} must be a list")
-    if len(coverage["covered_items"]) != covered:
-        fail(f"{result_id} source_coverage covered_items must have {covered} entries")
-    if len(coverage["uncovered_items"]) != total - covered:
-        fail(
-            f"{result_id} source_coverage uncovered_items must have "
-            f"{total - covered} entries"
-        )
-    if coverage["percent"] != round(100 * covered / total):
-        fail(f"{result_id} source_coverage percent must be round(100*covered/total)")
-    if not str(coverage["basis"]).strip():
-        fail(f"{result_id} source_coverage must state its basis")
-
-    formalization_relationships: dict[str, set[str]] = {}
-    for record in result.get("formalizations") or []:
-        declaration = record.get("declaration")
-        relationship = record.get("relationship")
-        if declaration and relationship:
-            formalization_relationships.setdefault(declaration, set()).add(relationship)
-    seen_items: set[str] = set()
-    seen_covered_declarations: set[str] = set()
-    for index, item in enumerate(coverage["covered_items"]):
-        if not isinstance(item, dict):
-            fail(f"{result_id} source_coverage covered_items[{index}] must be an object")
-        missing = SOURCE_COVERED_ITEM_FIELDS - item.keys()
-        if missing:
-            fail(
-                f"{result_id} source_coverage covered_items[{index}] "
-                f"missing fields: {sorted(missing)}"
-            )
-        item_name = item["item"]
-        declarations = item["declarations"]
-        relationship = item["relationship"]
-        if not isinstance(item_name, str) or not item_name.strip():
-            fail(f"{result_id} source_coverage covered_items[{index}] has no item name")
-        if item_name in seen_items:
-            fail(f"{result_id} source_coverage repeats item {item_name!r}")
-        seen_items.add(item_name)
-        if (
-            not isinstance(declarations, list)
-            or not declarations
-            or not all(isinstance(name, str) and name for name in declarations)
-        ):
-            fail(
-                f"{result_id} source_coverage covered_items[{index}] "
-                "must name one or more Lean declarations"
-            )
-        if len(declarations) != len(set(declarations)):
-            fail(
-                f"{result_id} source_coverage covered_items[{index}] "
-                "repeats a Lean declaration"
-            )
-        repeated = seen_covered_declarations.intersection(declarations)
-        if repeated:
-            fail(
-                f"{result_id} source_coverage counts declarations more than once: "
-                f"{sorted(repeated)}"
-            )
-        seen_covered_declarations.update(declarations)
-        if relationship not in SOURCE_COVERAGE_RELATIONSHIPS:
-            fail(
-                f"{result_id} source_coverage covered_items[{index}] "
-                f"has unknown relationship {relationship!r}"
-            )
-        if not isinstance(item["note"], str) or not item["note"].strip():
-            fail(
-                f"{result_id} source_coverage covered_items[{index}] "
-                "must explain its statement match in note"
-            )
-        mismatched = [
-            declaration
-            for declaration in declarations
-            if relationship not in formalization_relationships.get(declaration, set())
-        ]
-        if mismatched:
-            fail(
-                f"{result_id} source_coverage covered_items[{index}] declarations "
-                f"lack formalization records with relationship {relationship}: "
-                f"{mismatched}"
-            )
-
-    for index, item in enumerate(coverage["uncovered_items"]):
-        if not isinstance(item, dict):
-            fail(f"{result_id} source_coverage uncovered_items[{index}] must be an object")
-        missing = SOURCE_UNCOVERED_ITEM_FIELDS - item.keys()
-        if missing:
-            fail(
-                f"{result_id} source_coverage uncovered_items[{index}] "
-                f"missing fields: {sorted(missing)}"
-            )
-        item_name = item["item"]
-        if (
-            not isinstance(item_name, str)
-            or not item_name.strip()
-            or not isinstance(item["reason"], str)
-            or not item["reason"].strip()
-        ):
-            fail(
-                f"{result_id} source_coverage uncovered_items[{index}] "
-                "must record item and reason"
-            )
-        if item_name in seen_items:
-            fail(f"{result_id} source_coverage repeats item {item_name!r}")
-        seen_items.add(item_name)
-
-    for index, item in enumerate(coverage["excluded_items"]):
-        if not isinstance(item, dict) or not item.get("item") or not item.get("reason"):
-            fail(
-                f"{result_id} source_coverage excluded_items[{index}] "
-                "must record item and reason"
-            )
-        if item["item"] in seen_items:
-            fail(f"{result_id} source_coverage repeats item {item['item']!r}")
-        seen_items.add(item["item"])
-
 
 def validate_candidate_formalizations(result_id: str, result: dict) -> None:
     """Structured non-coverage leads: manually discovered formalizations that are
@@ -264,18 +289,31 @@ def validate_candidate_formalizations(result_id: str, result: dict) -> None:
     if not isinstance(leads, list):
         fail(f"{result_id} candidate_formalizations must be a list")
     for index, lead in enumerate(leads):
-        if not isinstance(lead, dict):
-            fail(f"{result_id} candidate_formalizations[{index}] must be an object")
+        lead = require_mapping(
+            lead, f"{result_id} candidate_formalizations[{index}] must be an object"
+        )
         missing = CANDIDATE_LEAD_FIELDS - lead.keys()
         if missing:
             fail(f"{result_id} candidate lead {index} missing fields: {sorted(missing)}")
         if not valid_http_url(lead["repository"]):
             fail(f"{result_id} candidate lead {index} has an invalid repository URL")
-        if not lead.get("revision") or not lead.get("declaration") or not lead.get("notes"):
-            fail(f"{result_id} candidate lead {index} must record revision, declaration, and notes")
-        if lead["inspection_state"] not in CANDIDATE_INSPECTION_STATES:
+        # `if not lead.get(...)` accepted any truthy value, so a list read as a
+        # recorded revision. A lead is provenance; provenance is text.
+        for field in ("revision", "declaration", "notes"):
+            require_text(
+                lead.get(field),
+                f"{result_id} candidate lead {index} must record {field} as "
+                "a non-empty string",
+            )
+        if (
+            not isinstance(lead["inspection_state"], str)
+            or lead["inspection_state"] not in CANDIDATE_INSPECTION_STATES
+        ):
             fail(f"{result_id} candidate lead {index} has unknown inspection_state {lead['inspection_state']!r}")
-        if lead["relationship_review"] not in CANDIDATE_REVIEW_STATES:
+        if (
+            not isinstance(lead["relationship_review"], str)
+            or lead["relationship_review"] not in CANDIDATE_REVIEW_STATES
+        ):
             fail(f"{result_id} candidate lead {index} has unknown relationship_review {lead['relationship_review']!r}")
 
 
@@ -286,35 +324,85 @@ def main() -> None:
     except (OSError, json.JSONDecodeError) as error:
         fail(str(error))
 
-    survey = data.get("survey", {})
+    data = require_mapping(data, "registry.yaml must contain an object")
+    survey = require_mapping(data.get("survey", {}), "survey must be an object")
     results = data.get("results")
     sources = data.get("source_catalog")
-    vocabulary = data.get("vocabulary", {})
+    vocabulary = require_mapping(
+        data.get("vocabulary", {}), "vocabulary must be an object"
+    )
+    search_evidence = require_mapping(
+        search_evidence, "formalization-search.json must contain an object"
+    )
 
     if data.get("schema_version") != 3:
         fail("registry.yaml must use schema version 3")
 
     if not isinstance(results, list):
         fail("results must be a list")
-    if not isinstance(sources, dict):
-        fail("source_catalog must be an object")
+    sources = require_mapping(sources, "source_catalog must be an object")
 
+    # One ledger, two kinds of row. A claim row states something a source
+    # asserted; an artifact row records a formalization that stands on its own.
+    # Closure is a property of the catalogued source, not of the file: the BY
+    # block stays contiguous and complete, and everything else is open.
     expected_count = survey.get("expected_result_count")
-    if len(results) != expected_count:
-        fail(f"expected {expected_count} results, found {len(results)}")
-
+    if not isinstance(expected_count, int) or expected_count < 1:
+        fail("survey.expected_result_count must be a positive integer")
+    actual_ids: list[str] = []
+    for index, result in enumerate(results):
+        result = require_mapping(result, f"result {index} must be an object")
+        actual_ids.append(
+            require_text(result.get("id"), f"result {index} id must be a non-empty string")
+        )
+    if len(set(actual_ids)) != len(actual_ids):
+        fail("result IDs must be unique")
+    survey_ids = [i for i in actual_ids if i and i.startswith("BY-")]
     expected_ids = [f"BY-{number:03d}" for number in range(1, expected_count + 1)]
-    actual_ids = [result.get("id") for result in results]
-    if actual_ids != expected_ids:
-        fail("result IDs must be unique, ordered, and contiguous from BY-001")
+    if survey_ids != expected_ids:
+        fail(
+            f"survey rows must be contiguous BY-001..BY-{expected_count:03d} in order; "
+            "the catalogued survey is closed"
+        )
+    # Three prefixes, and the prefix says what the row is, not where it came
+    # from. `BY-###` is the closed survey block. `CLM-*` is a claim from any
+    # other source — without it, a claim from AISI or MAIS had to borrow the
+    # LAND- namespace, which the documentation reserves for artifacts, so a
+    # ledger described as source-neutral could only admit a new source by
+    # contradicting its own vocabulary. `LAND-*` is a formalization standing on
+    # its own account.
+    bad = [
+        i
+        for i in actual_ids
+        if not re.fullmatch(r"(BY-\d{3}|CLM-[A-Z0-9-]+|LAND-[A-Z0-9-]+)", i or "")
+    ]
+    if bad:
+        fail(f"result ids must be BY-###, CLM-*, or LAND-*: {bad}")
 
-    status_values = set(vocabulary.get("progress_status", []))
-    relationship_values = set(vocabulary.get("relationship", []))
-    artifact_values = set(vocabulary.get("lean_artifact_type", []))
-    license_values = set(vocabulary.get("spdx_license", []))
-    bridge_status_values = set(vocabulary.get("ai_bridge_status", []))
-    if status_values != {"MAPPED", "LEAN_AVAILABLE"}:
-        fail("progress_status vocabulary must contain only MAPPED and LEAN_AVAILABLE")
+    relationship_values = set(
+        require_text_list(
+            vocabulary.get("relationship"),
+            "relationship vocabulary must be a list of non-empty strings",
+        )
+    )
+    artifact_values = set(
+        require_text_list(
+            vocabulary.get("lean_artifact_type"),
+            "lean_artifact_type vocabulary must be a list of non-empty strings",
+        )
+    )
+    license_values = set(
+        require_text_list(
+            vocabulary.get("spdx_license"),
+            "spdx_license vocabulary must be a list of non-empty strings",
+        )
+    )
+    bridge_status_values = set(
+        require_text_list(
+            vocabulary.get("ai_bridge_status"),
+            "ai_bridge_status vocabulary must be a list of non-empty strings",
+        )
+    )
     if bridge_status_values != BRIDGE_STATUS_VALUES:
         fail(
             "ai_bridge_status vocabulary must contain exactly "
@@ -327,7 +415,11 @@ def main() -> None:
     # vocabulary rather than free text: an unchecked tag fragments the by-area
     # view silently, and a view nobody can trust is a view nobody reads.
     tag_values = vocabulary.get("tag")
-    if not isinstance(tag_values, list) or not tag_values:
+    tag_values = require_text_list(
+        vocabulary.get("tag"),
+        "tag vocabulary must be a non-empty list of non-empty strings",
+    )
+    if not tag_values:
         fail("tag vocabulary must be a non-empty list")
     if sorted(tag_values) != list(tag_values):
         fail("tag vocabulary must be sorted")
@@ -335,33 +427,41 @@ def main() -> None:
         fail("tag vocabulary must not repeat a tag")
     tag_values = set(tag_values)
 
-    required_result_fields = {
+    universal_result_fields = {"id", "name", "tags", "notes", "formalizations", "lean_artifact"}
+    # What any claim row owes, whatever source it came from.
+    required_claim_fields = {
         "id",
         "name",
-        "paper_reference",
-        "mechanism_category",
-        "domain_category",
-        "survey_proof_assessment",
         "informal_claim",
-        "formal_library_search",
         "original_source_refs",
         "tags",
         "formalizations",
         "lean_artifact",
-        "status",
         "ai_safety_relevance",
         "ai_bridge_status",
         "notes",
+    }
+    # ...and what only a survey row owes. `paper_reference` restates the
+    # survey's own bibliography column and `survey_proof_assessment` records how
+    # that survey argued its row — neither is a question another source's claim
+    # can answer. Requiring them of every claim meant a real AISI or MAIS entry
+    # could only be admitted by inventing survey vocabulary for it, which is the
+    # opposite of the source-neutral ledger the views already claim to render.
+    survey_only_result_fields = {
+        "paper_reference",
+        "survey_proof_assessment",
+        "formal_library_search",
     }
     required_formalization_fields = {
         "framework",
         "repository",
         "version",
-        "module",
-        "declaration",
-        "relationship",
         "reproduced",
         "license",
+    }
+    claim_formalization_fields = required_formalization_fields | {
+        "module",
+        "relationship",
     }
     required_artifact_declaration_fields = {
         "atlas_declaration",
@@ -370,9 +470,11 @@ def main() -> None:
     }
 
     formalization_count = 0
+    claim_formalization_count = 0
     reproduced_external_count = 0
-    lean_artifact_count = 0
+    lean_row_count = 0
     lean_declaration_names: set[str] = set()
+    declaration_owner: dict[str, str] = {}
     formalization_keys: set[tuple[str, ...]] = set()
     expected_search_corpora = {
         "mathlib",
@@ -384,7 +486,11 @@ def main() -> None:
     }
     if search_evidence.get("schema_version") != 3:
         fail("formalization-search.json must use schema version 3")
-    if set(search_evidence.get("corpora", {})) != expected_search_corpora:
+    evidence_corpora = require_mapping(
+        search_evidence.get("corpora", {}),
+        "formalization-search.json corpora must be an object",
+    )
+    if set(evidence_corpora) != expected_search_corpora:
         fail("formalization-search.json corpus set does not match registry policy")
     # The six-corpus sweep is one profile — a completeness artifact for one
     # catalogued source — not a standing obligation every new row inherits.
@@ -397,20 +503,28 @@ def main() -> None:
         if not isinstance(search_evidence.get(field), str) or not search_evidence[field].strip():
             fail(f"formalization-search.json must state {field}")
     evidence_results = search_evidence.get("results")
-    if not isinstance(evidence_results, dict) or set(evidence_results) != set(actual_ids):
-        fail("formalization-search.json result IDs do not match registry")
+    if not isinstance(evidence_results, dict) or set(evidence_results) != set(expected_ids):
+        fail(
+            "formalization-search.json must cover exactly the catalogued survey rows; "
+            "the baseline-catalogue profile is scoped to that source, not to the ledger"
+        )
 
     # A claim that something does not exist is the one claim a reader cannot
     # check for themselves, so it carries what was searched, where, when, and
     # what the search did not cover. Recording one is optional; recording one
     # incompletely is not.
+    # A declaration name is verified by the generated
+    # AISafetyAtlas/Examples/Registry.lean, which #checks every atlas
+    # declaration in the ledger, and by the Lean build, which elaborates it.
+    # The result-level root_import flag is checked later against the actual
+    # module import closure.
+
     novelty_checks = search_evidence.get("novelty_checks")
     if not isinstance(novelty_checks, list):
         fail("formalization-search.json must carry a novelty_checks list")
     seen_checks: set[str] = set()
     for index, check in enumerate(novelty_checks):
-        if not isinstance(check, dict):
-            fail(f"novelty check {index} must be an object")
+        check = require_mapping(check, f"novelty check {index} must be an object")
         missing = NOVELTY_CHECK_FIELDS - check.keys()
         if missing:
             fail(f"novelty check {index} missing fields: {sorted(missing)}")
@@ -423,24 +537,39 @@ def main() -> None:
         for field in ("claim", "method", "found", "scope_limits", "searched_by"):
             if not isinstance(check[field], str) or not check[field].strip():
                 fail(f"{cid} must record a non-empty {field}")
-        if not ISO_DATE.fullmatch(str(check["searched_on"])):
+        searched_on = require_text(
+            check.get("searched_on"), f"{cid} must record searched_on as an ISO date"
+        )
+        if not ISO_DATE.fullmatch(searched_on):
             fail(f"{cid} has an invalid searched_on date {check['searched_on']!r}")
-        if not isinstance(check["asserted_in"], list) or not check["asserted_in"]:
-            fail(f"{cid} must name where the claim is asserted")
-        corpora = check["corpora"]
-        if not isinstance(corpora, list) or not corpora:
+        require_text_list(
+            check.get("asserted_in"),
+            f"{cid} asserted_in must be a list of non-empty strings",
+        )
+        corpora = require_text_list(
+            check.get("corpora"),
+            f"{cid} corpora must be a list of non-empty strings",
+        )
+        if not corpora:
             fail(f"{cid} must name at least one searched corpus")
         unknown = sorted(set(corpora) - set(search_evidence["corpora"]))
         if unknown:
             fail(f"{cid} names corpora with no pinned revision on record: {unknown}")
 
     for source_id, source in sources.items():
-        if not isinstance(source, dict) or not source.get("citation"):
-            fail(f"{source_id} must contain a citation")
+        require_mapping(source, f"{source_id} must be an object")
+        # A list citation passed the old truthiness test and then crashed the
+        # generator, which calls `.split()` on it to shorten the reference.
+        require_text(
+            source.get("citation"), f"{source_id} must contain a citation"
+        )
         locator = source.get("locator")
         if locator is not None and not valid_http_url(locator):
             fail(f"{source_id} has an invalid locator URL")
-        role = source.get("role")
+        role = require_text(
+            source.get("role"),
+            f"{source_id} role must be a non-empty string",
+        )
         if role not in SOURCE_ROLES:
             fail(
                 f"{source_id} has unknown role {role!r}; "
@@ -469,104 +598,222 @@ def main() -> None:
         if source.get("role") == "directory"
     }
 
-    root_import_modules = set(
-        re.findall(
-            r"^\s*(?:public\s+)?import\s+(\S+)",
-            (ROOT / "AISafetyAtlas.lean").read_text(encoding="utf-8"),
-            re.M,
-        )
-    )
+    local_modules, root_closure = root_import_closure()
 
     for result in results:
         result_id = result.get("id", "<missing>")
-        missing = required_result_fields - result.keys()
+        is_claim = "informal_claim" in result
+        is_survey_row = result_id in set(expected_ids)
+        # Namespace first: which prefix a row uses decides which fields it owes,
+        # so reporting a field mismatch before the prefix is wrong would name the
+        # symptom and hide the cause.
+        if is_claim:
+            if not result_id.startswith(("BY-", "CLM-")):
+                fail(
+                    f"{result_id} states a claim, so its id must be BY-### (the "
+                    "closed survey block) or CLM-*; LAND- is for formalizations "
+                    "that stand on their own account"
+                )
+        elif not result_id.startswith("LAND-"):
+            fail(f"{result_id} has no informal_claim but does not use the LAND- prefix")
+
+        needed = required_claim_fields if is_claim else universal_result_fields
+        if is_survey_row:
+            needed = needed | survey_only_result_fields
+        elif survey_only_result_fields & result.keys():
+            present = sorted(survey_only_result_fields & result.keys())
+            fail(
+                f"{result_id} carries survey-only fields {present}; those record "
+                "how the Brčić–Yampolskiy survey presented its own rows and mean "
+                "nothing on another source's claim"
+            )
+        missing = needed - result.keys()
         if missing:
             fail(f"{result_id} missing fields: {sorted(missing)}")
-        if not result["name"] or not result["informal_claim"]:
-            fail(f"{result_id} must have a name and informal claim")
-        if result["status"] not in status_values:
-            fail(f"{result_id} has unknown status {result['status']!r}")
-        expected_status = (
-            "LEAN_AVAILABLE" if result["lean_artifact"] is not None else "MAPPED"
-        )
-        if result["status"] != expected_status:
-            fail(
-                f"{result_id} status must be {expected_status} for its Lean artifact state"
+        if not isinstance(result["name"], str) or not result["name"].strip():
+            fail(f"{result_id} must have a name")
+        if not isinstance(result["notes"], str) or not result["notes"].strip():
+            fail(f"{result_id} must have non-empty notes")
+        if is_claim and (
+            not isinstance(result["informal_claim"], str)
+            or not result["informal_claim"].strip()
+        ):
+            fail(f"{result_id} must have an informal claim")
+        if not is_claim:
+            stray = {"ai_bridge_status", "bridge_review", "candidate_formalizations"} & result.keys()
+            if stray:
+                fail(
+                    f"{result_id} is an artifact row and must not carry claim fields: "
+                    f"{sorted(stray)}"
+                )
+        if "root_import" in result and not isinstance(result["root_import"], bool):
+            fail(f"{result_id} root_import must be boolean")
+        if result.get("root_import") and result["lean_artifact"] is None:
+            fail(f"{result_id} root_import requires an atlas declaration")
+        if (
+            is_claim
+            and (
+                not isinstance(result["ai_bridge_status"], str)
+                or result["ai_bridge_status"] not in bridge_status_values
             )
-        if result["ai_bridge_status"] not in bridge_status_values:
+        ):
             fail(f"{result_id} has unknown ai_bridge_status {result['ai_bridge_status']!r}")
         tags = result["tags"]
         if not isinstance(tags, list) or not tags:
             fail(f"{result_id} must carry at least one tag")
+        if any(not isinstance(tag, str) or not tag.strip() for tag in tags):
+            fail(f"{result_id} tags must be non-empty strings")
         unknown_tags = [tag for tag in tags if tag not in tag_values]
         if unknown_tags:
             fail(f"{result_id} has tags outside the vocabulary: {sorted(unknown_tags)}")
         if len(set(tags)) != len(tags):
             fail(f"{result_id} repeats a tag")
-        validate_bridge_review(result_id, result)
-        validate_candidate_formalizations(result_id, result)
-        validate_source_coverage(result_id, result)
+        if is_claim:
+            validate_bridge_review(result_id, result)
+        if is_claim:
+            validate_candidate_formalizations(result_id, result)
 
-        search = result["formal_library_search"]
-        if set(search.get("searched_corpora", [])) != expected_search_corpora:
-            fail(f"{result_id} does not cover all required formal-library corpora")
-        if not search.get("query_terms"):
-            fail(f"{result_id} has no formal-library search terms")
-        if search.get("evidence_file") != "docs/provenance/formalization-search.json":
-            fail(f"{result_id} points to unexpected search evidence")
-
-        result_evidence = evidence_results[result_id]
-        queries = search["query_terms"]
-        if result_evidence.get("queries") != queries:
-            fail(f"{result_id} query terms have drifted from search evidence")
-        candidate_hits = result_evidence.get("candidate_hits")
-        if not isinstance(candidate_hits, dict) or set(candidate_hits) != expected_search_corpora:
-            fail(f"{result_id} search evidence has an invalid corpus set")
-        candidate_corpora = {
-            corpus for corpus, hit in candidate_hits.items() if hit.get("hit_count", 0)
-        }
-        if set(search.get("candidate_corpora", [])) != candidate_corpora:
-            fail(f"{result_id} candidate corpora have drifted from search evidence")
-        for corpus, hit in candidate_hits.items():
-            counts = hit.get("query_hit_counts")
-            if not isinstance(counts, dict) or list(counts) != queries:
-                fail(f"{result_id}/{corpus} lacks ordered per-query hit counts")
-            expected_matches = [query for query in queries if counts[query] > 0]
-            if hit.get("matched_queries") != expected_matches:
-                fail(f"{result_id}/{corpus} matched-query summary is inconsistent")
-            paths = hit.get("paths")
-            hit_count = hit.get("hit_count")
-            if not isinstance(paths, list) or not isinstance(hit_count, int):
-                fail(f"{result_id}/{corpus} has invalid hit evidence")
-            if hit_count < len(paths) or len(paths) > 12:
-                fail(f"{result_id}/{corpus} path sample is inconsistent")
-
-        for source_id in result["original_source_refs"]:
+        source_refs = result.get("original_source_refs", [])
+        if not isinstance(source_refs, list) or not all(
+            isinstance(source_id, str) and source_id for source_id in source_refs
+        ):
+            fail(f"{result_id} original_source_refs must be a list of non-empty strings")
+        if result_id.startswith("CLM-") and not source_refs:
+            fail(
+                f"{result_id} claim rows must name at least one original source; "
+                "CLM-* is reserved for claims with recorded provenance"
+            )
+        related_ids = result.get("related_result_ids", [])
+        if not isinstance(related_ids, list) or not all(
+            isinstance(related, str) and related for related in related_ids
+        ):
+            fail(f"{result_id} related_result_ids must be a list of non-empty strings")
+        for source_id in source_refs:
             if source_id not in sources:
                 fail(f"{result_id} references missing source {source_id}")
+        for related in related_ids:
+            if related not in {r["id"] for r in results}:
+                fail(f"{result_id} related_result_ids names unknown result {related}")
+        if not isinstance(result["formalizations"], list):
+            fail(f"{result_id} formalizations must be a list")
+        for record in result["formalizations"]:
+            if not isinstance(record, dict):
+                fail(f"{result_id} formalization records must be objects")
+        if not is_claim and not result["formalizations"]:
+            fail(
+                f"{result_id} records no claim, so it must record at least one "
+                "formalization — otherwise it asserts nothing at all"
+            )
+
+        if result_id in expected_ids:
+            search = require_mapping(
+                result.get("formal_library_search"),
+                f"{result_id} formal_library_search must be an object",
+            )
+            searched_corpora = require_text_list(
+                search.get("searched_corpora"),
+                f"{result_id} searched_corpora must be a list of non-empty strings",
+            )
+            if set(searched_corpora) != expected_search_corpora:
+                fail(f"{result_id} does not cover all required formal-library corpora")
+            queries = require_text_list(
+                search.get("query_terms"),
+                f"{result_id} query_terms must be a non-empty list of non-empty strings",
+            )
+            if not queries:
+                fail(f"{result_id} has no formal-library search terms")
+            if search.get("evidence_file") != "docs/provenance/formalization-search.json":
+                fail(f"{result_id} points to unexpected search evidence")
+
+            result_evidence = require_mapping(
+                evidence_results[result_id],
+                f"{result_id} search evidence must be an object",
+            )
+            if result_evidence.get("queries") != queries:
+                fail(f"{result_id} query terms have drifted from search evidence")
+            candidate_hits = result_evidence.get("candidate_hits")
+            if not isinstance(candidate_hits, dict) or set(candidate_hits) != expected_search_corpora:
+                fail(f"{result_id} search evidence has an invalid corpus set")
+            for corpus, raw_hit in candidate_hits.items():
+                hit = require_mapping(
+                    raw_hit, f"{result_id}/{corpus} hit evidence must be an object"
+                )
+                candidate_hits[corpus] = hit
+                hit_count = hit.get("hit_count")
+                if type(hit_count) is not int or hit_count < 0:
+                    fail(f"{result_id}/{corpus} has invalid hit evidence")
+            candidate_corpora = {
+                corpus
+                for corpus, hit in candidate_hits.items()
+                if hit.get("hit_count", 0)
+            }
+            candidate_corpora_declared = require_text_list(
+                search.get("candidate_corpora"),
+                f"{result_id} candidate_corpora must be a list of non-empty strings",
+            )
+            if set(candidate_corpora_declared) != candidate_corpora:
+                fail(f"{result_id} candidate corpora have drifted from search evidence")
+            for corpus, hit in candidate_hits.items():
+                counts = hit.get("query_hit_counts")
+                if not isinstance(counts, dict) or list(counts) != queries:
+                    fail(f"{result_id}/{corpus} lacks ordered per-query hit counts")
+                if any(type(counts[query]) is not int or counts[query] < 0 for query in queries):
+                    fail(
+                        f"{result_id}/{corpus} query hit counts must be non-negative integers"
+                    )
+                expected_matches = [query for query in queries if counts[query] > 0]
+                if hit.get("matched_queries") != expected_matches:
+                    fail(f"{result_id}/{corpus} matched-query summary is inconsistent")
+                paths = hit.get("paths")
+                hit_count = hit.get("hit_count")
+                if not isinstance(paths, list) or type(hit_count) is not int or hit_count < 0:
+                    fail(f"{result_id}/{corpus} has invalid hit evidence")
+                if any(not isinstance(path, str) or not path.strip() for path in paths):
+                    fail(f"{result_id}/{corpus} hit paths must be non-empty strings")
+                if hit_count < len(paths) or len(paths) > 12:
+                    fail(f"{result_id}/{corpus} path sample is inconsistent")
+
 
         # `RELATED` is scoped capital, not a failed match — but a reader meeting
         # it on the public API, or on a row whose bridge has been reviewed, is
         # entitled to know what it does not cover. Internal helper material that
         # nothing public exposes stays lighter: the trigger is reach, not grade.
-        artifact = result.get("lean_artifact") or {}
-        declaration_types = {d["type"] for d in artifact.get("declarations", [])}
+        raw_artifact = result.get("lean_artifact")
+        if raw_artifact is not None and not isinstance(raw_artifact, dict):
+            fail(f"{result_id} lean_artifact must be an object or null")
+        artifact = raw_artifact or {}
+        raw_declarations = artifact.get("declarations", [])
+        declaration_types: set[str] = set()
+        if isinstance(raw_declarations, list):
+            declaration_types = {
+                d.get("type")
+                for d in raw_declarations
+                if isinstance(d, dict) and isinstance(d.get("type"), str)
+            }
         interpretation_affecting = (
-            result["ai_bridge_status"] != "HUMAN_REVIEW"
+            result.get("ai_bridge_status", "HUMAN_REVIEW") != "HUMAN_REVIEW"
             or "BRIDGE" in declaration_types
         )
         for record in result.get("formalizations") or []:
+            # The trigger is reach, not citation. An earlier version also
+            # required a non-empty `original_source_refs`, which quietly exempted
+            # exactly the rows least able to justify a grade: LAND-GOAL-001 was
+            # RELATED, on the public root import, and carried no scope_delta.
             if record.get("relationship") != "RELATED":
                 continue
-            module = record.get("module") or ""
+            module = normalize_module_name(
+                record.get("atlas_module") or record.get("module") or ""
+            )
             public = any(
                 module == name or module.startswith(name + ".")
-                for name in root_import_modules
+                for name in root_closure
             )
             delta = record.get("scope_delta")
             if not (public or interpretation_affecting):
                 continue
-            declaration = record.get("declaration", "<unnamed>")
+            declaration = record.get(
+                "declaration", record.get("declarations", "<unnamed>")
+            )
             if not isinstance(delta, dict):
                 fail(
                     f"{result_id} RELATED record {declaration} is public or "
@@ -575,9 +822,14 @@ def main() -> None:
             missing = SCOPE_DELTA_FIELDS - delta.keys()
             if missing:
                 fail(f"{result_id} scope_delta missing fields: {sorted(missing)}")
-            if not str(delta["summary"]).strip():
-                fail(f"{result_id} scope_delta needs a non-empty summary")
-            raw_evidence = str(delta["evidence"])
+            require_text(
+                delta.get("summary"),
+                f"{result_id} scope_delta summary must be a non-empty string",
+            )
+            raw_evidence = require_text(
+                delta.get("evidence"),
+                f"{result_id} scope_delta evidence must be a non-empty string",
+            )
             if raw_evidence.startswith("/") or ".." in Path(raw_evidence).parts:
                 fail(
                     f"{result_id} scope_delta evidence must be a repository-relative "
@@ -595,12 +847,23 @@ def main() -> None:
         # statement-match grade relates two statements, and a curated list has
         # none. A graded row must therefore name at least one work source.
         graded = any(
-            (record or {}).get("relationship") in GRADED_RELATIONSHIPS
+            isinstance(record, dict)
+            and isinstance(record.get("relationship"), str)
+            and record.get("relationship") in GRADED_RELATIONSHIPS
             for record in (result.get("formalizations") or [])
         )
         if graded:
-            refs = result["original_source_refs"]
-            if refs and not any(source_id not in directories for source_id in refs):
+            # Citing nothing is not weaker than citing a directory — it is the
+            # same failure with less to inspect. Both leave a grade with no
+            # second statement to be a grade *of*. Guarding this on `refs and`
+            # exempted precisely the rows that cited nothing.
+            if not source_refs:
+                fail(
+                    f"{result_id} carries a statement-match grade but names no work "
+                    "source; a grade relates two statements, and this row records "
+                    "only one"
+                )
+            if not any(source_id not in directories for source_id in source_refs):
                 fail(
                     f"{result_id} carries a statement-match grade but cites only "
                     "directory sources; grade against the work that states the "
@@ -612,44 +875,179 @@ def main() -> None:
             declarations = artifact.get("declarations")
             if not isinstance(declarations, list) or not declarations:
                 fail(f"{result_id} Lean artifact lacks atlas declarations")
+            row_declaration_names: set[str] = set()
             for declaration in declarations:
+                declaration = require_mapping(
+                    declaration,
+                    f"{result_id} Lean artifact declarations must be objects",
+                )
                 missing = required_artifact_declaration_fields - declaration.keys()
                 if missing:
                     fail(
                         f"{result_id} Lean artifact declaration missing fields: "
                         f"{sorted(missing)}"
                     )
-                if declaration["type"] not in artifact_values:
+                if (
+                    not isinstance(declaration["type"], str)
+                    or declaration["type"] not in artifact_values
+                ):
                     fail(f"{result_id} has unknown Lean artifact type")
-                if not declaration["atlas_declaration"]:
-                    fail(f"{result_id} has an unnamed Lean artifact declaration")
-                if declaration["atlas_declaration"] in lean_declaration_names:
+                declaration_name(
+                    declaration["atlas_declaration"],
+                    f"{result_id} has an unnamed Lean artifact declaration",
+                )
+                # One declaration, one owning row. A declaration named by two
+                # rows has no answer to "which result does this prove?", and
+                # every consumer that maps declaration -> result silently picks
+                # by iteration order. The pre-merge validator enforced this
+                # globally; scoping it to a single row was a regression.
+                if declaration["atlas_declaration"] in row_declaration_names:
                     fail(
-                        f"duplicate Lean artifact declaration: "
+                        f"duplicate Lean artifact declaration within {result_id}: "
                         f"{declaration['atlas_declaration']}"
                     )
+                owner = declaration_owner.get(declaration["atlas_declaration"])
+                if owner is not None:
+                    fail(
+                        f"duplicate Lean artifact declaration: "
+                        f"{declaration['atlas_declaration']} is owned by {owner} "
+                        f"and claimed again by {result_id}"
+                    )
+                declaration_owner[declaration["atlas_declaration"]] = result_id
+                row_declaration_names.add(declaration["atlas_declaration"])
                 lean_declaration_names.add(declaration["atlas_declaration"])
-                if not isinstance(declaration["source_declarations"], list) or not declaration["source_declarations"]:
+                if not isinstance(declaration["source_declarations"], list):
+                    fail(
+                        f"{result_id} Lean artifact declaration source_declarations "
+                        "must be a list"
+                    )
+                if declaration["source_declarations"]:
+                    declaration_names(
+                        declaration["source_declarations"],
+                        f"{result_id} Lean artifact declaration "
+                        "source_declarations must contain non-empty names",
+                    )
+                if declaration["type"] != "NEW_PROOF" and not declaration["source_declarations"]:
                     fail(f"{result_id} Lean artifact declaration lacks sources")
-            lean_artifact_count += len(declarations)
+                # A BRIDGE is the layer that carries an AI reading, and the layer
+                # a reader is most likely to over-interpret. It must say in one
+                # line what it applies, to which model, and what it reduces
+                # through — otherwise the AI-facing surface can grow unlabelled
+                # under a row named after a classical theorem, which is how the
+                # alignment-undecidability result ended up visible only as
+                # "Rice's theorem".
+                if declaration["type"] == "BRIDGE":
+                    require_text(
+                        declaration.get("application"),
+                        f"{result_id} BRIDGE declaration "
+                        f"{declaration['atlas_declaration']} must record an "
+                        "`application` line",
+                    )
+                elif "application" in declaration:
+                    require_text(
+                        declaration["application"],
+                        f"{result_id} declaration {declaration['atlas_declaration']} "
+                        "has an empty application line",
+                    )
+            lean_row_count += 1
 
-        if not isinstance(result["formalizations"], list):
-            fail(f"{result_id} formalizations must be a list")
         for record in result["formalizations"]:
-            missing = required_formalization_fields - record.keys()
+            required = (
+                claim_formalization_fields if is_claim else required_formalization_fields
+            )
+            missing = required - record.keys()
             if missing:
                 fail(f"{result_id} formalization missing fields: {sorted(missing)}")
-            if record["relationship"] not in relationship_values:
+            if not isinstance(record["framework"], str) or not record["framework"].strip():
+                fail(f"{result_id} formalization framework must be a non-empty string")
+            if not isinstance(record["version"], str) or not record["version"].strip():
+                fail(f"{result_id} formalization version must be a non-empty string")
+            for optional_field in ("module", "atlas_module"):
+                if optional_field in record and (
+                    not isinstance(record[optional_field], str)
+                    or not record[optional_field].strip()
+                ):
+                    fail(
+                        f"{result_id} formalization {optional_field} must be a "
+                        "non-empty string when present"
+                    )
+            if "modules" in record:
+                modules = record["modules"]
+                if (
+                    not isinstance(modules, list)
+                    or not modules
+                    or any(
+                        not isinstance(module, str) or not module.strip()
+                        for module in modules
+                    )
+                ):
+                    fail(
+                        f"{result_id} formalization modules must be a non-empty list "
+                        "of non-empty strings"
+                    )
+                if "module" in record:
+                    fail(f"{result_id} formalization must use module or modules, not both")
+            has_declaration = "declaration" in record
+            has_declarations = "declarations" in record
+            if has_declaration and has_declarations:
+                fail(
+                    f"{result_id} formalization must use declaration or declarations, "
+                    "not both"
+                )
+            if is_claim and not (has_declaration or has_declarations):
+                fail(
+                    f"{result_id} formalization must record declaration or declarations"
+                )
+            if has_declaration:
+                record_declarations = declaration_names(
+                    [record["declaration"]],
+                    f"{result_id} formalization declaration must be a non-empty name",
+                )
+            elif has_declarations:
+                record_declarations = declaration_names(
+                    record["declarations"],
+                    f"{result_id} formalization declarations must be a non-empty list "
+                    "of names",
+                )
+            else:
+                record_declarations = []
+            if "upstream_module" in record:
+                fail(
+                    f"{result_id} uses deprecated upstream_module; use module for "
+                    "the referenced repository and atlas_module for the local atlas"
+                )
+            if "atlas_module" in record:
+                atlas_module = normalize_module_name(record["atlas_module"])
+                if atlas_module not in local_modules:
+                    fail(
+                        f"{result_id} atlas_module does not name a local Lean module: "
+                        f"{record['atlas_module']}"
+                    )
+            if "relationship" in record and not isinstance(record["relationship"], str):
+                fail(f"{result_id} formalization relationship must be a string")
+            if "relationship" in record and record["relationship"] not in relationship_values:
                 fail(f"{result_id} has unknown relationship")
-            if record["license"] not in license_values:
+            if (
+                not isinstance(record["license"], str)
+                or record["license"] not in license_values
+            ):
                 fail(f"{result_id} has an unknown SPDX license identifier")
             if not valid_http_url(record["repository"]):
                 fail(f"{result_id} formalization has an invalid repository URL")
             if not isinstance(record["reproduced"], bool):
                 fail(f"{result_id} formalization reproduced flag must be boolean")
-            if not all(record[field] for field in ("version", "module", "declaration")):
+            if is_claim and (
+                not record.get("version")
+                or not record.get("module")
+                or not record_declarations
+            ):
                 fail(f"{result_id} formalization has incomplete provenance")
             if record["repository"] == PROJECT_REPOSITORY:
+                if not record.get("module") or not record_declarations:
+                    fail(
+                        f"{result_id} in-repository formalization must record "
+                        "module and declaration"
+                    )
                 if record["version"] != IN_TREE_VERSION:
                     fail(
                         f"{result_id} in-repository formalization must use "
@@ -670,13 +1068,25 @@ def main() -> None:
                     )
             elif record["version"] == IN_TREE_VERSION:
                 fail(f"{result_id} external formalization cannot use {IN_TREE_VERSION}")
+            if (
+                not is_claim
+                and artifact is not None
+                and record["framework"] == "Lean"
+                and record["repository"] != PROJECT_REPOSITORY
+                and "atlas_module" not in record
+            ):
+                fail(
+                    f"{result_id} external Lean artifact must record atlas_module "
+                    "separately from the referenced repository module"
+                )
             formalization_key = (
                 result_id,
-                record["framework"],
-                record["repository"],
-                record["version"],
-                record["module"],
-                record["declaration"],
+                str(record["framework"]),
+                str(record["repository"]),
+                str(record["version"]),
+                str(record.get("module", "")),
+                str(record.get("modules", "")),
+                str(record_declarations),
             )
             if formalization_key in formalization_keys:
                 fail(f"{result_id} contains a duplicate formalization record")
@@ -684,30 +1094,103 @@ def main() -> None:
             if record["reproduced"]:
                 environment = record.get("build_environment")
                 command = record.get("build_command")
-                if not environment or not command:
+                if not isinstance(environment, str) or not environment.strip():
                     fail(
-                        f"{result_id} reproduced formalization lacks explicit "
-                        "build evidence"
+                        f"{result_id} reproduced formalization build_environment "
+                        "must be a non-empty string"
                     )
-                command_path = command.split()[0]
-                if command_path.startswith("scripts/"):
-                    script = ROOT / command_path
-                    if not script.is_file() or not os.access(script, os.X_OK):
+                if not isinstance(command, str) or not command.strip():
+                    fail(
+                        f"{result_id} reproduced formalization build_command "
+                        "must be a non-empty string"
+                    )
+                # The gate does not execute these commands — Isabelle, Docker,
+                # and upstream-toolchain builds are out of scope for a check a
+                # contributor runs on every edit, and methodology.md states that
+                # trust boundary. What the gate *can* refuse is a reproduction
+                # claim backed by a command that reproduces nothing: only the
+                # script path and `lake build` were ever checked, so
+                # `build_command: "echo done"` on an external record recorded a
+                # reproduction the ledger had no way to doubt.
+                tokens = command.split()
+                if not tokens:
+                    fail(f"{result_id} reproduction command must not be empty")
+                command_path = tokens[0]
+                script_path = Path(command_path)
+                if (
+                    script_path.parent == Path("scripts")
+                    and script_path.name.startswith("reproduce_")
+                    and script_path.suffix == ".sh"
+                ):
+                    script = (ROOT / script_path).resolve()
+                    root = ROOT.resolve()
+                    if root not in script.parents or not script.is_file() or not os.access(script, os.X_OK):
                         fail(
                             f"{result_id} reproduction command references a missing "
                             "or nonexecutable script"
                         )
+                elif tokens[:2] == ["lake", "build"]:
+                    # Recorded commands carry shell punctuation and prose:
+                    # `lake build AISafetyAtlas; python3 …` and
+                    # `lake build AISafetyAtlas (vendored axiom-free trilemma)`.
+                    built = [
+                        token
+                        for raw in tokens[2:]
+                        if (token := raw.strip("();,"))
+                        if (ROOT / (token.replace(".", "/") + ".lean")).is_file()
+                    ]
+                    if not built:
+                        fail(
+                            f"{result_id} reproduction command builds no module that "
+                            f"exists in this tree: {command!r}"
+                        )
+                else:
+                    fail(
+                        f"{result_id} claims reproduction with a command that is "
+                        f"neither a scripts/reproduce_*.sh entry point nor a "
+                        f"`lake build`: {command!r}"
+                    )
+            else:
+                for evidence_field in ("build_environment", "build_command"):
+                    if evidence_field in record and not isinstance(
+                        record[evidence_field], str
+                    ):
+                        fail(
+                            f"{result_id} formalization {evidence_field} must be a "
+                            "string when present"
+                        )
             formalization_count += 1
+            if is_claim:
+                claim_formalization_count += 1
             if record["framework"] != "Lean" and record["reproduced"]:
                 reproduced_external_count += 1
 
+        if "root_import" in result and result["lean_artifact"] is not None:
+            atlas_modules = set()
+            for record in result["formalizations"]:
+                if record.get("repository") == PROJECT_REPOSITORY and record.get("module"):
+                    atlas_modules.add(normalize_module_name(record["module"]))
+                elif record.get("atlas_module"):
+                    atlas_modules.add(normalize_module_name(record["atlas_module"]))
+            if not atlas_modules:
+                fail(f"{result_id} root_import requires a recorded atlas module")
+            expected_root_import = any(module in root_closure for module in atlas_modules)
+            if result["root_import"] != expected_root_import:
+                fail(
+                    f"{result_id} root_import={result['root_import']} disagrees with "
+                    f"the public root import closure ({expected_root_import})"
+                )
+
+    claims = sum(1 for r in results if "informal_claim" in r)
     print(
         "registry ok: "
-        f"{len(results)} results, {len(sources)} sources, "
-        f"{formalization_count} formalizations, "
-        f"{lean_artifact_count} Lean artifacts, "
+        f"{len(results)} results ({claims} claims + {len(results) - claims} artifacts), "
+        f"{len(sources)} sources, "
+        f"{formalization_count} formalization records ({claim_formalization_count} on claim rows), "
+        f"{lean_row_count} rows with atlas Lean, "
+        f"{len(lean_declaration_names)} unique atlas declarations, "
         f"{reproduced_external_count} reproduced external records, "
-        f"{len(results)} synchronized six-corpus searches"
+        f"{len(expected_ids)} synchronized six-corpus searches"
     )
 
 

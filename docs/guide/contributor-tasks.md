@@ -229,10 +229,10 @@ dual to the impossibility rows.
   Reproduce like Chaitin/Isabelle — build at the upstream toolchain from a
   separate checkout via a new `scripts/reproduce_debate.sh`.
 - **Acceptance:** clean build at the pinned revision under its own toolchain;
-  strict-trust scan of the reproduced tree; a `landscape.yaml` record
+  strict-trust scan of the reproduced tree; a `registry.yaml` record
   (`LAND-DEBATE-001` — revision, `Debate/Correct.lean`, the three theorem
-  names, Apache-2.0, relationship `RELATED`, reproduction status,
-  `survey_coverage: null`); `scripts/reproduce_debate.sh`; regenerated views;
+  names, Apache-2.0, relationship `RELATED`, reproduction status; an artifact row,
+  so never headline coverage); `scripts/reproduce_debate.sh`; regenerated views;
   provenance note. Never a headline coverage count.
 - **Honest scope:** carry upstream's own caveats — correctness only; space
   complexity not formalized; time counts oracle queries only; Lipschitz oracle
@@ -243,7 +243,7 @@ dual to the impossibility rows.
   `leanprover/lean4:v4.8.0` (`Debate.Correct`, 1721/1721 targets); strict-trust
   scan clean across 19 upstream Lean sources; `completeness`/`soundness`/
   `correctness` present in `Debate/Correct.lean`. Landscape record
-  `LAND-DEBATE-001` (`survey_coverage: null`, no atlas import surface);
+  `LAND-DEBATE-001` (artifact row, no atlas import surface);
   `scripts/reproduce_debate.sh`; evidence
   [`debate-reproduction.md`](../provenance/debate-reproduction.md). First
   reproduced possibility / scalable-oversight anchor. Never headline coverage.
@@ -423,7 +423,7 @@ evidence above as the issue body. Suggested title:
   coverage; BY-001 / BY-020 / BY-021 candidates populated (R6-4).
 - Generated full-registry human view at
   [`sources/brcic-yampolskiy-2023.md`](../status/sources/brcic-yampolskiy-2023.md).
-- `landscape.yaml` + generated landscape index for non–Table-1 formalizations
+- `registry.yaml` + generated landscape index for non–Table-1 formalizations
   (R6-3).
 - Status breakdown of WRAPPER vs BRIDGE (R6-2); STATE generated snapshot (R7-1).
 - Kernel `#print axioms` CI check (R7-2); Upstream LICENSE copies (R7-3).

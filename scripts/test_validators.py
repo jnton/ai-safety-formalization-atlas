@@ -16,6 +16,8 @@ that copy.
 from __future__ import annotations
 
 import json
+import os
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import shutil
 import subprocess
@@ -26,7 +28,6 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 DATA = [
     "registry.yaml",
-    "landscape.yaml",
     "conjectures.yaml",
     "tasks.yaml",
     "docs/provenance/formalization-search.json",
@@ -34,7 +35,6 @@ DATA = [
 EXTRA = ["AISafetyAtlas.lean"]
 SCRIPTS = [
     "validate_registry.py",
-    "validate_landscape.py",
     "validate_conjectures.py",
     "validate_tasks.py",
     # validate_conjectures imports it for the Lean import-graph helpers.
@@ -104,6 +104,87 @@ CASES = [
         "must record a `retrieved` ISO date",
     ),
     (
+        "registry: graded row citing no source at all",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-NFL-001").__setitem__(
+            "original_source_refs", []
+        ),
+        "names no work source; a grade relates two statements",
+    ),
+    (
+        "registry: public RELATED with no sources skipping its scope delta",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: [
+            first(d["results"], id="LAND-GOAL-001").__setitem__(
+                "original_source_refs", ["mathforaisafety-2026"]
+            ),
+            next(
+                f
+                for f in first(d["results"], id="LAND-GOAL-001")["formalizations"]
+                if f.get("relationship") == "RELATED"
+            ).pop("scope_delta"),
+        ],
+        "must carry a scope_delta",
+    ),
+    (
+        "registry: claim row using the artifact namespace",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: d["results"].append(
+            dict(first(d["results"], id="BY-001"), id="LAND-NOT-A-CLAIM")
+        ),
+        "its id must be BY-### (the closed survey block) or CLM-*",
+    ),
+    (
+        "registry: non-survey claim carrying survey-only fields",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: d["results"].append(
+            dict(first(d["results"], id="BY-001"), id="CLM-BORROWED-001")
+        ),
+        "carries survey-only fields",
+    ),
+    (
+        "registry: reproduction claimed with a command that reproduces nothing",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-NFL-001")["formalizations"][0].__setitem__(
+            "build_command", "echo pretend"
+        ),
+        "neither a scripts/reproduce_*.sh entry point nor a `lake build`",
+    ),
+    (
+        "registry: reproduction claimed with a non-reproduction script",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-NFL-001")["formalizations"][0].__setitem__(
+            "build_command", "scripts/validate_registry.py"
+        ),
+        "neither a scripts/reproduce_*.sh entry point nor a `lake build`",
+    ),
+    (
+        "registry: reproduction lake-building a module that does not exist",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-GS-002")["formalizations"][0].__setitem__(
+            "build_command", "lake build AISafetyAtlas.NoSuchModule"
+        ),
+        "builds no module that exists in this tree",
+    ),
+    (
+        "registry: BRIDGE declaration with no application line",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: next(
+            x
+            for x in first(d["results"], id="BY-012")["lean_artifact"]["declarations"]
+            if x["type"] == "BRIDGE"
+        ).pop("application"),
+        "must record an `application` line",
+    ),
+    (
         "registry: result tagged outside the vocabulary",
         "validate_registry.py",
         "registry.yaml",
@@ -165,6 +246,300 @@ CASES = [
         "must be a repository-relative path inside the tree",
     ),
     (
+        "registry: artifact formalization with invalid relationship",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-VNM-001")["formalizations"][0].__setitem__(
+            "relationship", "NOT-A-RELATIONSHIP"
+        ),
+        "has unknown relationship",
+    ),
+    (
+        "registry: artifact formalization with no schema",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-VNM-001").__setitem__(
+            "formalizations", [{"garbage": "no"}]
+        ),
+        "formalization missing fields",
+    ),
+    (
+        "registry: artifact formalization with invalid repository",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-VNM-001")["formalizations"][0].__setitem__(
+            "repository", "not a url"
+        ),
+        "has an invalid repository URL",
+    ),
+    (
+        "registry: artifact formalization with invalid license",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-GS-002")["formalizations"][0].__setitem__(
+            "license", "NOT-SPDX"
+        ),
+        "has an unknown SPDX license identifier",
+    ),
+    (
+        "registry: artifact formalization with invalid reproduced flag",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-VNM-001")["formalizations"][0].__setitem__(
+            "reproduced", "yes"
+        ),
+        "reproduced flag must be boolean",
+    ),
+    (
+        "registry: artifact formalization with incomplete provenance",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-VNM-001")["formalizations"][0].pop(
+            "version"
+        ),
+        "formalization missing fields",
+    ),
+    (
+        "registry: artifact declaration without source",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-GS-002")["lean_artifact"]["declarations"][0].update(
+            type="WRAPPER", source_declarations=[]
+        ),
+        "Lean artifact declaration lacks sources",
+    ),
+    (
+        "registry: duplicate artifact declaration within a row",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-ATTR-001")["lean_artifact"]["declarations"].append(
+            dict(first(d["results"], id="LAND-ATTR-001")["lean_artifact"]["declarations"][0])
+        ),
+        "duplicate Lean artifact declaration within LAND-ATTR-001",
+    ),
+    (
+        "registry: artifact with unknown related result",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-GS-001")["related_result_ids"].append(
+            "LAND-GHOST-001"
+        ),
+        "related_result_ids names unknown result",
+    ),
+    (
+        "registry: artifact with no formalization",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-VNM-001").__setitem__(
+            "formalizations", []
+        ),
+        "records no claim, so it must record at least one formalization",
+    ),
+    (
+        "registry: artifact formalizations with wrong container type",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-VNM-001").__setitem__(
+            "formalizations", {}
+        ),
+        "formalizations must be a list",
+    ),
+    (
+        "registry: artifact with malformed lean artifact",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-GS-002").__setitem__(
+            "lean_artifact", []
+        ),
+        "lean_artifact must be an object or null",
+    ),
+    (
+        "registry: artifact declaration with wrong container type",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-GS-002")["lean_artifact"].__setitem__(
+            "declarations", [{}]
+        ),
+        "Lean artifact declaration missing fields",
+    ),
+    (
+        "registry: artifact declarations with wrong container type",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-GS-002")["lean_artifact"].__setitem__(
+            "declarations", None
+        ),
+        "Lean artifact lacks atlas declarations",
+    ),
+    (
+        "registry: artifact declaration with non-list sources",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-GS-002")["lean_artifact"]["declarations"][0].__setitem__(
+            "source_declarations", "not-a-list"
+        ),
+        "source_declarations must be a list",
+    ),
+    (
+        "registry: reproduced artifact without build evidence",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-VNM-001")["formalizations"][0].pop(
+            "build_environment"
+        ),
+        "build_environment must be a non-empty string",
+    ),
+    (
+        "registry: reproduced artifact with malformed environment",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-VNM-001")["formalizations"][0].__setitem__(
+            "build_environment", []
+        ),
+        "build_environment must be a non-empty string",
+    ),
+    (
+        "registry: artifact with malformed relationship type",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-GOAL-001")["formalizations"][0].__setitem__(
+            "relationship", []
+        ),
+        "relationship must be a string",
+    ),
+    (
+        "registry: artifact declaration with malformed type",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-GS-002")["lean_artifact"]["declarations"][0].__setitem__(
+            "type", []
+        ),
+        "has unknown Lean artifact type",
+    ),
+    (
+        "registry: artifact declaration with malformed source entry",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-GS-002")["lean_artifact"]["declarations"][0].__setitem__(
+            "source_declarations", [[]]
+        ),
+        "source_declarations must contain non-empty names",
+    ),
+    (
+        "registry: artifact declaration packs multiple source names",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-HYPER-002")["lean_artifact"][
+            "declarations"
+        ][0]["source_declarations"].__setitem__(0, "first; second"),
+        "must be one identifier per list entry",
+    ),
+    (
+        "registry: formalization packs multiple declaration names",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-HYPER-002")["formalizations"][
+            0
+        ]["declarations"].__setitem__(0, "first; second"),
+        "declaration names must be one identifier per list entry",
+    ),
+    (
+        "registry: formalization packs names with a comma",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-HYPER-002")["formalizations"][
+            0
+        ]["declarations"].__setitem__(0, "first, second"),
+        "declaration names must be one identifier per list entry",
+    ),
+    (
+        "registry: artifact with non-boolean root import",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-GS-002").__setitem__(
+            "root_import", "yes"
+        ),
+        "root_import must be boolean",
+    ),
+    (
+        "registry: artifact with incorrect root import claim",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-JOINTOBS-001").__setitem__(
+            "root_import", False
+        ),
+        "disagrees with the public root import closure",
+    ),
+    (
+        "registry: one declaration owned by two rows",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-GS-002")["lean_artifact"][
+            "declarations"
+        ].__setitem__(
+            0,
+            dict(
+                first(d["results"], id="LAND-GS-002")["lean_artifact"]["declarations"][
+                    0
+                ],
+                atlas_declaration="AISafetyAtlas.SocialChoice.arrow",
+            ),
+        ),
+        "is owned by BY-007 and claimed again by LAND-GS-002",
+    ),
+    (
+        "registry: result with empty notes",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-VNM-001").__setitem__("notes", " "),
+        "must have non-empty notes",
+    ),
+    (
+        "registry: external artifact without local atlas module",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-GS-002")["formalizations"][0].pop(
+            "atlas_module"
+        ),
+        "external Lean artifact must record atlas_module",
+    ),
+    (
+        "registry: artifact with malformed tag",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-VNM-001").__setitem__(
+            "tags", [[]]
+        ),
+        "tags must be non-empty strings",
+    ),
+    (
+        "registry: in-repository artifact without declaration provenance",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-HYPER-002")["formalizations"][0].pop(
+            "module"
+        ),
+        "in-repository formalization must record module and declaration",
+    ),
+    (
+        "registry: external artifact using in-tree version",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-VNM-001")["formalizations"][0].__setitem__(
+            "version", "IN_TREE"
+        ),
+        "external formalization cannot use IN_TREE",
+    ),
+    (
+        "registry: duplicate artifact formalization",
+        "validate_registry.py",
+        "registry.yaml",
+        lambda d: first(d["results"], id="LAND-VNM-001")["formalizations"].append(
+            dict(first(d["results"], id="LAND-VNM-001")["formalizations"][0])
+        ),
+        "contains a duplicate formalization record",
+    ),
+    (
         "conjectures: no refutation condition",
         "validate_conjectures.py",
         "conjectures.yaml",
@@ -186,6 +561,20 @@ CASES = [
         "conjectures.yaml",
         lambda d: d["conjectures"][0].update(status="RESOLVED", resolution=None),
         "resolution exactly when its status is terminal",
+    ),
+    (
+        "conjectures: status has the wrong scalar type",
+        "validate_conjectures.py",
+        "conjectures.yaml",
+        lambda d: d["conjectures"][0].__setitem__("status", []),
+        "unknown status",
+    ),
+    (
+        "conjectures: tag has the wrong scalar type",
+        "validate_conjectures.py",
+        "conjectures.yaml",
+        lambda d: d["conjectures"][0].__setitem__("tags", [[]]),
+        "tags must be non-empty strings",
     ),
     (
         "conjectures: module that is not a Lean build target",
@@ -213,6 +602,15 @@ CASES = [
         "result ids that do not exist",
     ),
     (
+        "tasks: citing a claim row that does not exist",
+        "validate_tasks.py",
+        "tasks.yaml",
+        lambda d: first(d["tasks"], id="CT-15").__setitem__(
+            "body", first(d["tasks"], id="CT-15")["body"] + " See CLM-GHOST-001."
+        ),
+        "result ids that do not exist",
+    ),
+    (
         "tasks: citing a landscape entry that does not exist",
         "validate_tasks.py",
         "tasks.yaml",
@@ -221,27 +619,35 @@ CASES = [
         ),
         "landscape ids that do not exist",
     ),
+    (
+        "tasks: size has the wrong scalar type",
+        "validate_tasks.py",
+        "tasks.yaml",
+        lambda d: d["tasks"][0].__setitem__("size", []),
+        "unknown size",
+    ),
+    (
+        "tasks: status has the wrong scalar type",
+        "validate_tasks.py",
+        "tasks.yaml",
+        lambda d: d["tasks"][0].__setitem__("status", []),
+        "unknown status",
+    ),
 ]
 
 
-def main() -> None:
-    failures: list[str] = []
+def run_cases(cases: list[tuple]) -> list[str]:
+    """Run a slice of the case list against a private copy of the tree.
 
+    Each worker gets its own tree because a case mutates a ledger file and
+    restores it afterwards; sharing one tree would make the cases race. The copy
+    costs about 10 ms, which is nothing next to the validator runs it enables to
+    proceed in parallel.
+    """
+    failures: list[str] = []
     with tempfile.TemporaryDirectory() as raw:
         tmp = build_tree(Path(raw))
-
-        # Control: the unmutated copy must pass, otherwise a rejection below
-        # proves nothing about the rule it claims to exercise.
-        for script in (
-            "validate_registry.py",
-            "validate_conjectures.py",
-            "validate_tasks.py",
-        ):
-            code, output = run(tmp, script)
-            if code != 0:
-                failures.append(f"control: {script} rejected valid data: {output}")
-
-        for label, script, target, change, expected in CASES:
+        for label, script, target, change, expected in cases:
             original = (tmp / target).read_text(encoding="utf-8")
             try:
                 mutate(tmp, target, change)
@@ -254,14 +660,46 @@ def main() -> None:
                     )
             finally:
                 (tmp / target).write_text(original, encoding="utf-8")
+    return failures
 
-    for failure in failures:
+
+def run_control() -> list[str]:
+    """The unmutated copy must pass, or every rejection below proves nothing."""
+    failures: list[str] = []
+    with tempfile.TemporaryDirectory() as raw:
+        tmp = build_tree(Path(raw))
+        for script in (
+            "validate_registry.py",
+            "validate_conjectures.py",
+            "validate_tasks.py",
+        ):
+            code, output = run(tmp, script)
+            if code != 0:
+                failures.append(f"control: {script} rejected valid data: {output}")
+    return failures
+
+
+def main() -> None:
+    # The work is a subprocess per case, so threads are enough — the GIL is
+    # released while each validator runs. Capped because the win flattens once
+    # workers outnumber the cases each would carry.
+    workers = max(1, min(os.cpu_count() or 1, 8, len(CASES)))
+    chunks: list[list[tuple]] = [CASES[index::workers] for index in range(workers)]
+
+    failures: list[str] = []
+    with ThreadPoolExecutor(max_workers=workers + 1) as pool:
+        pending = [pool.submit(run_control)]
+        pending += [pool.submit(run_cases, chunk) for chunk in chunks if chunk]
+        for future in pending:
+            failures.extend(future.result())
+
+    for failure in sorted(failures):
         print(f"validator regression FAILED — {failure}", file=sys.stderr)
     if failures:
         raise SystemExit(1)
     print(
         f"validator regressions ok: {len(CASES)} invalid ledgers rejected, "
-        "valid ledgers accepted"
+        f"valid ledgers accepted ({workers} workers)"
     )
 
 

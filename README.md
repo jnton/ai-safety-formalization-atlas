@@ -81,8 +81,9 @@ monorepo in-tree. Reusable structure and honest grading over volume.
 <!-- BEGIN GENERATED REGISTRY SCOPE -->
 | Metric | Current |
 |---|---:|
-| Registry Lean declarations | **41** |
-| Landscape formalizations | **17** (8 on root import) |
+| Atlas Lean declarations | **50** |
+| Results stating a source claim | **44** |
+| Results recording a formalization only | **16** (8 on root import) |
 | Reviewed AI-system bridges | **2** |
 | Open conjectures | **0** |
 | Catalogued results with statement-match | **7** |
@@ -129,19 +130,18 @@ human review.
 weakening fidelity. `RELATED` is a useful core with an explicit scope delta; it
 does not by itself mean unfinished, and residual paper gaps remain documented.
 A bridge may be `REVIEWED` while the formalization stays `RELATED` (e.g. robot).
-See the [`v0.4 release scope`](docs/releases/v0.4.md) and
+See the [`v0.5 release scope`](docs/releases/v0.5.md) and
 [`docs/guide/methodology.md`](docs/guide/methodology.md).
 
 ## Repository contents
 
-- [`registry.yaml`](registry.yaml) records results carrying source provenance,
-  with the catalogued sources they came from.
+- [`registry.yaml`](registry.yaml) records every result: claim rows carrying
+  source provenance, and artifact rows for formalizations and public Lean
+  surface the workbench develops or reproduces on its own account.
 - [`AISafetyAtlas/`](AISafetyAtlas/) contains attributed Lean integrations.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) explains how to propose and verify changes.
 - [`ROADMAP.md`](ROADMAP.md) presents the public strategy and contributor entry points.
 - [`STATE.md`](STATE.md) reports the current phase, blockers, and next tasks.
-- [`landscape.yaml`](landscape.yaml) records formalizations and public Lean
-  surface the workbench develops or reproduces on its own account.
 - [`conjectures.yaml`](conjectures.yaml) records open questions that have a
   compiling Lean statement and no proof; nothing in it is asserted.
 - [`tasks.yaml`](tasks.yaml) is the maintained task board;
@@ -180,22 +180,22 @@ The stable entry points are conventional theorem names under domain namespaces:
 - `AISafetyAtlas.Preference` — preference-unidentifiability and override cores
 - `AISafetyAtlas.Oversight.JointObservation` — `covers_iff_no_collision`, the certified
   finite checker `decideCoverage`, the repair boundary, and the bounded portfolio target
-  (landscape `LAND-JOINTOBS-001`, not a survey row; see the
+  (landscape `LAND-JOINTOBS-001`; see the
   [joint observation model](docs/guide/joint-observation-model.md))
 
 The three latter facades contain short primary-surface tables and explicit
 paper-parity non-claims. Their source maps and residual gaps are recorded in the
 [A1–A3/B1–B3/B7 re-verification](docs/provenance/a1-a3-b1-b3-b7-reverification.md).
 
-**Landscape (not survey coverage):** recorded in
-[`landscape.yaml`](landscape.yaml), also on the root import when marked
-`root_import: true`:
+**Landscape declarations** — results the workbench develops or reproduces on its
+own account, recorded in `registry.yaml` and on the root
+import when marked `root_import: true`:
 
 - `AISafetyAtlas.Explainability.attribution_impossibility` (DASH trilemma;
   not BY-029/BY-042 without a separate statement map)
 
 Reproduced external formalizations that carry no Lean interface are pinned in
-[`landscape.yaml`](landscape.yaml), listed in the
+`registry.yaml`, listed in the
 [landscape index](docs/status/landscape-index.md), and rebuilt with
 `scripts/reproduce_isabelle.sh`:
 
@@ -240,12 +240,13 @@ scripts/reproduce_chaitin.sh
 
 | I have… | It goes in | Then |
 |---|---|---|
-| a pointer to work that already exists, or a citation fix | `registry.yaml` (survey row) or `landscape.yaml` | `scripts/setup.sh --pointer` |
-| an open question and no proof | `conjectures.yaml` + a module under `AISafetyAtlas/Conjectures/` | add it to `scripts/lean_build_targets.txt`, then build + gate |
-| a proof to write, or any Lean change | the facade for your area (see Domain imports) | `scripts/setup.sh`, then build + gate + `check_print_axioms.py` |
+| a pointer to a result, or a proof, that is not recorded here | the [discovery issue form](https://github.com/mbrcic/ai-safety-formalization-atlas/issues/new?template=known-formalization.yml) — we classify it and place it | nothing to install |
+| a correction to a record you have already found | the ledger file that holds it | `scripts/setup.sh --pointer` |
+| an open question and no proof | the [conjecture issue form](https://github.com/mbrcic/ai-safety-formalization-atlas/issues/new?template=conjecture.yml) | no Lean needed; the statement enters the ledger after it compiles |
+| a proof to write, or any Lean change | the facade for your area (see Domain imports); for new coverage, dependencies, or public API, start with the [formalization proposal](https://github.com/mbrcic/ai-safety-formalization-atlas/issues/new?template=formalization-proposal.yml) | `scripts/setup.sh`, then build + gate + `check_print_axioms.py` |
 | a change to a contributor task | `tasks.yaml` — never the generated Markdown | regenerate + gate |
-| evidence that something does not exist | `novelty_checks` in `docs/provenance/formalization-search.json` | regenerate + gate |
-| a new source to catalogue | `source_catalog` in `registry.yaml`, with its `role` | regenerate + gate |
+| evidence that something does not exist | `novelty_checks` in `docs/provenance/formalization-search.json` | update search evidence, then regenerate + gate |
+| a new source to catalogue | `source_catalog` in `registry.yaml`, with its `role`; add a `CLM-*` row with `original_source_refs` if it states a result | regenerate + gate |
 
 **regenerate** `python3 scripts/generate_registry_views.py` · **gate** `./scripts/agent_gate.sh` · **build** `lake build`
 
