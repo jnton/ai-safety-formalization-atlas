@@ -81,14 +81,14 @@ monorepo in-tree. Reusable structure and honest grading over volume.
 <!-- BEGIN GENERATED REGISTRY SCOPE -->
 | Metric | Current |
 |---|---:|
-| Atlas Lean declarations | **105** |
-| Results stating a source claim | **46** |
-| Results recording a formalization only | **26** (17 on root import) |
+| Atlas Lean declarations | **124** |
+| Results stating a source claim | **49** |
+| Results recording a formalization only | **28** (19 on root import) |
 | Reviewed AI-system bridges | **2** |
 | Statement-reviewed bridges (interpretation withheld) | **1** |
-| Open conjectures | **0** |
-| Claim results with statement-match | **9** |
-| Claim results with `RELATED`-only formalization | **6** |
+| Open conjectures | **1** |
+| Claim results with statement-match | **12** |
+| Claim results with `RELATED`-only formalization | **7** |
 
 `EXACT`/`EQUIVALENT` = conservative citation grade (completely
 formalization-covered source statements). `RELATED` = value-based scoped
@@ -112,7 +112,9 @@ re-export their domain (`Wireheading`, `Compositional`,
 `Oversight.JointObservation`); the kernels do not, so `Knowledge` and
 `Preference` specializations are imported one by one, and `Verification`
 supplies its mathematical base without the `AgentBehavior` and `Robot` bridges.
-Import contracts per module: [`AISafetyAtlas.lean`](AISafetyAtlas.lean).
+`Inference` re-exports its own subtree, so one import carries the whole Wolpert
+development; `Knowledge.Devices` is the transport between the two and imports
+both. Import contracts per module: [`AISafetyAtlas.lean`](AISafetyAtlas.lean).
 
 ```lean
 import AISafetyAtlas.Preference    -- planner/reward unidentifiability (kernel)
@@ -129,6 +131,9 @@ import AISafetyAtlas.Knowledge.Temporal -- time-indexed knowability, collisions,
 import AISafetyAtlas.Knowledge.Ambiguity -- finite fibre ambiguity, counting obstruction
 import AISafetyAtlas.Knowledge.SelfReference -- model as part of the state it models
 import AISafetyAtlas.Knowledge.Accumulation -- window ambiguity bounds over time
+import AISafetyAtlas.Knowledge.Devices -- transports between the kernel and inference devices
+import AISafetyAtlas.Knowledge.Check -- executable checkers, each with an agreement theorem
+import AISafetyAtlas.Inference     -- Wolpert devices: weak/strong inference, control, physical knowledge
 import AISafetyAtlas.SelfAwareness -- process composition and complete-awareness limits
 ```
 
@@ -148,7 +153,7 @@ human review.
 weakening fidelity. `RELATED` is a useful core with an explicit scope delta; it
 does not by itself mean unfinished, and residual paper gaps remain documented.
 A bridge may be `REVIEWED` while the formalization stays `RELATED` (e.g. robot).
-See the [`v0.5 release scope`](docs/releases/v0.5.md) and
+See the [`v0.7 release scope`](docs/releases/v0.7.md) and
 [`docs/guide/methodology.md`](docs/guide/methodology.md).
 
 ## Repository contents
@@ -157,6 +162,12 @@ See the [`v0.5 release scope`](docs/releases/v0.5.md) and
   source provenance, and artifact rows for formalizations and public Lean
   surface the workbench develops or reproduces on its own account.
 - [`AISafetyAtlas/`](AISafetyAtlas/) contains attributed Lean integrations.
+- [`Main.lean`](Main.lean) is `atlas-check`: it reads a finite model as JSON and
+  prints the verdict together with the declaration that certifies it, so a
+  question about a particular model can be answered without writing Lean. Every
+  checker behind it is paired with a theorem saying it agrees with the `Prop`.
+  See the [guide](docs/guide/atlas-check.md) — including what the output is
+  *not*, which is a proof term the kernel has checked for that instance.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) explains how to propose and verify changes.
 - [`ROADMAP.md`](ROADMAP.md) presents the public strategy and contributor entry points.
 - [`STATE.md`](STATE.md) reports the current phase, blockers, and next tasks.
