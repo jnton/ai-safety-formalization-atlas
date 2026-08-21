@@ -265,11 +265,19 @@ def validate_lean_build_closure(lean_files: list[Path]) -> None:
     unknown_targets = sorted(set(targets) - set(modules))
     require(not unknown_targets, f"Lean build-target manifest names missing modules: {unknown_targets}")
 
-    uncovered = sorted(set(modules) - root_closure - set(targets))
+    # `lake build` on a target compiles everything that target imports, so the
+    # closure is taken over the targets exactly as it is over the root. Without
+    # it the manifest would have to name every module of a vendored subtree by
+    # hand, and rot the moment the subtree gained a file.
+    target_closure: set[str] = set()
+    for target in targets:
+        target_closure |= dependency_closure(target, graph)
+
+    uncovered = sorted(set(modules) - root_closure - target_closure)
     require(
         not uncovered,
-        "Lean modules are neither reachable from AISafetyAtlas nor explicit CI "
-        f"build targets: {uncovered}",
+        "Lean modules are neither reachable from AISafetyAtlas nor from an "
+        f"explicit CI build target: {uncovered}",
     )
 
     workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")

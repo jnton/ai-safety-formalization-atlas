@@ -1,0 +1,88 @@
+/-
+Vendored from `google-deepmind/debate` (Apache-2.0) via the Lean v4.31.0 port
+`LukaHobor/debate` @ `dafe25d`. Changed at the header only; ledger and
+rationale: `vendor/debate/PROVENANCE.md`.
+-/
+
+module
+
+public import Mathlib.Data.Finsupp.Notation
+public import AISafetyAtlas.Upstream.Debate.Prob.Arith
+public import Mathlib.Data.Finsupp.Notation
+
+@[expose] public section
+
+-- Linters off per `vendor/debate/PROVENANCE.md`; no correctness linter is
+-- touched and incomplete proofs stay errors.
+set_option linter.unusedSimpArgs false
+set_option linter.unusedSectionVars false
+set_option linter.unusedVariables false
+set_option linter.deprecated false
+set_option linter.style.longLine false
+set_option linter.unnecessarySeqFocus false
+set_option linter.unusedTactic false
+
+/-!
+Bernoulli distributions
+-/
+
+open Classical
+open Prob
+open Set
+open scoped Real
+noncomputable section
+
+/-- Bernoulli random variable.
+    We clamp probabilities to [0,1] so that any probability can be passed in. -/
+def bernoulli (p' : ℝ) : Prob Bool := by
+  set p := max 0 (min 1 p')
+  exact {
+    prob := fun₀ | true => p | false => 1-p
+    prob_nonneg := by
+      intro x; induction x
+      · simp only [Finsupp.coe_update, Function.update_self, sub_nonneg, max_le_iff, zero_le_one,
+          min_le_iff, le_refl, true_or, and_self, p]
+      · simp only [Finsupp.coe_update, ne_eq, Bool.true_eq_false, not_false_eq_true,
+          Function.update_of_ne, Finsupp.single_eq_same, le_max_iff, le_refl, le_min_iff,
+          zero_le_one, true_and, true_or, p]
+    total := by
+      simp only [implies_true, Finsupp.sum_fintype, Fintype.univ_bool, Finsupp.coe_update,
+        Finset.mem_singleton, Bool.true_eq_false, not_false_eq_true, Finset.sum_insert, ne_eq,
+        Function.update_of_ne, Finsupp.single_eq_same, Finset.sum_singleton, Function.update_self,
+        add_sub_cancel]
+  }
+
+-- If p is arbitrary, the probabilities are clamped
+lemma bernoulli_prob_true' (p : ℝ) : (bernoulli p).prob true = max 0 (min 1 p) := by
+  simp only [bernoulli, Finsupp.coe_update, ne_eq, Bool.true_eq_false, not_false_eq_true,
+    Function.update_of_ne, Finsupp.single_eq_same]
+lemma bernoulli_prob_false' (p : ℝ) : (bernoulli p).prob false = 1 - max 0 (min 1 p) := by
+  simp only [bool_prob_false_of_true, bernoulli_prob_true']
+
+-- If p is in [0,1], the probabilities are as expected
+lemma bernoulli_prob_true {p : ℝ} (m : p ∈ Icc 0 1) : (bernoulli p).prob true = p := by
+  simp only [bernoulli_prob_true', ite_true, min_eq_right m.2, max_eq_right m.1]
+lemma bernoulli_prob_false {p : ℝ} (m : p ∈ Icc 0 1) : (bernoulli p).prob false = 1-p := by
+  simp only [bool_prob_false_of_true, bernoulli_prob_true m]
+
+/-- 1/2 ∈ [0,1] -/
+lemma half_mem_Icc : (1/2 : ℝ) ∈ Icc 0 1 := by norm_num
+
+/-- One random bit -/
+def bit : Prob Bool := bernoulli (1/2)
+lemma bit_prob (x : Bool) : bit.prob x = 1/2 := by
+  induction x
+  · have h := bernoulli_prob_false half_mem_Icc
+    norm_num at h; exact h
+  · exact bernoulli_prob_true half_mem_Icc
+
+/-- The expectation of a Bernoulli distribution in terms of true and false values -/
+lemma exp_bernoulli (p : ℝ) (m : p ∈ Icc 0 1) (f : Bool → ℝ) :
+    (bernoulli p).exp f = (1-p) * f false + p * f true := by
+  simp only [exp_bool, bernoulli_prob_false m, bernoulli_prob_true m]
+
+/-- All Bool computations are Bernoulli -/
+lemma Prob.eq_bernoulli (f : Prob Bool) : f = bernoulli (f.prob true) := by
+  ext x; induction x
+  · simp only [bernoulli_prob_true (f.prob_mem_Icc _), bool_prob_false_of_true]
+  · simp only [bernoulli_prob_true (f.prob_mem_Icc _)]

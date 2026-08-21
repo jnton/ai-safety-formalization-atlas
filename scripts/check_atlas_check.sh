@@ -92,7 +92,9 @@ expect oversight-has-a-flattening-lever.json "verdict: THE COUNTING BOUND DOES N
 expect oversight-has-a-flattening-lever.json "this is NOT a finding that oversight succeeds"
 
 # A model the reader must refuse rather than silently decide.
-malformed="$(mktemp "${TMPDIR:-/tmp}/atlas-check-XXXXXX.json")"
+# The X's must end the template: BSD `mktemp` substitutes them only there, so an
+# `.json` suffix made both calls resolve to the same name and the second failed.
+malformed="$(mktemp "${TMPDIR:-/tmp}/atlas-check-XXXXXX")"
 trap 'rm -f -- "$malformed"' EXIT
 cat >"$malformed" <<'JSON'
 { "schema": "atlas-check/1", "kind": "knowability",
@@ -111,7 +113,7 @@ fi
 # target into the state count and took 11s at 22 states; this model has 120
 # states and two target values, and finishes in well under a second. A timeout
 # here means the exponent moved back onto the wrong quantity.
-wide="$(mktemp "${TMPDIR:-/tmp}/atlas-check-XXXXXX.json")"
+wide="$(mktemp "${TMPDIR:-/tmp}/atlas-check-XXXXXX")"
 python3 - "$wide" <<'PY'
 import json, sys
 n = 120
@@ -121,7 +123,19 @@ json.dump({"schema": "atlas-check/1", "kind": "device", "states": n,
            "target": [i % 2 for i in range(n)], "value": 1},
           open(sys.argv[1], "w"))
 PY
-if timeout 30 "$BINARY" "$wide" >/dev/null 2>&1; then
+# `timeout` is GNU coreutils, absent on a stock macOS. Skipping with a notice is
+# the trade `agent_gate.sh` already makes for pytest and ty; CI runs on Linux, so
+# the guard still holds on a pull request.
+timeout_command=""
+for candidate in timeout gtimeout; do
+  if command -v "$candidate" >/dev/null 2>&1; then
+    timeout_command="$candidate"
+    break
+  fi
+done
+if [[ -z "$timeout_command" ]]; then
+  echo "skip 120 states with two target values: no timeout(1) available (CI runs it)"
+elif "$timeout_command" 30 "$BINARY" "$wide" >/dev/null 2>&1; then
   checks=$((checks + 1))
   echo "ok   120 states with two target values: decided within the timeout"
 else
@@ -148,4 +162,8 @@ if (( failures > 0 )); then
   exit 1
 fi
 
-echo "atlas-check ok: $checks checks agree with the Lean proofs and the scaling guard holds"
+if [[ -n "$timeout_command" ]]; then
+  echo "atlas-check ok: $checks checks agree with the Lean proofs and the scaling guard holds"
+else
+  echo "atlas-check ok: $checks checks agree with the Lean proofs; scaling guard skipped (no timeout(1))"
+fi

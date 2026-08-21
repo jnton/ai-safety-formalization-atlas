@@ -93,7 +93,7 @@ monorepo in-tree. Reusable structure and honest grading over volume.
 <!-- BEGIN GENERATED REGISTRY SCOPE -->
 | Metric | Current |
 |---|---:|
-| Atlas Lean declarations | **208** |
+| Atlas Lean declarations | **214** |
 | Results stating a source claim | **49** |
 | Results recording a formalization only | **32** (23 on root import) |
 | Reviewed AI-system bridges | **3** |
@@ -196,12 +196,18 @@ import AISafetyAtlas.Knowledge.Devices -- transports between the kernel and infe
 import AISafetyAtlas.Knowledge.Check -- executable checkers, each with an agreement theorem
 import AISafetyAtlas.Inference     -- Wolpert devices: weak/strong inference, control, physical knowledge
 import AISafetyAtlas.SelfAwareness -- process composition and complete-awareness limits
+import AISafetyAtlas.Oversight.Debate -- doubly-efficient debate (vendored; NOT on the root import)
 ```
 
 Cross-surface consumer pattern (compositional boundary + nonzero regret +
 preference certificate): `AISafetyAtlas.Examples.WorkbenchConsumers`. Primary
 names live in each facade docstring; root `import AISafetyAtlas` remains
 available.
+
+`Oversight.Debate` is the one facade root `import AISafetyAtlas` does **not**
+bring in: it wraps a vendored development that declares its names in the root
+namespace, so it is imported on its own and audited separately. Its module
+docstring gives the reason.
 
 ## Epistemic scope
 
