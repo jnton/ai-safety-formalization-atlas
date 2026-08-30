@@ -37,6 +37,7 @@ EXTERNAL_ROOTS = {
     "Fin", "Prod", "Bool", "Classical", "ENNReal", "Filter", "Fintype", "Mathlib",
     "MeasureTheory", "ProbabilityTheory", "PFR", "GaloisField", "IsUniform",
     "Polynomial", "Finsupp", "List", "Option", "Sigma", "Subtype", "Quotient",
+    "Asymptotics",
 }
 BACKTICK_SPAN = re.compile(r"`([^`\n]+)`")
 NAME_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_'.\u2032\u2081-\u2089]*")
@@ -52,6 +53,19 @@ EXEMPT = {
     # result nearest to the one that module supplies: the finite-grid sibling
     # of a.e.-nonvanishing, which is why the measure-theoretic form is absent
     "MvPolynomial.schwartz_zippel_totalDegree",
+    # cited by the same module as the only measure-level currying statements
+    # Mathlib has: both are about `infinitePi`, not about `volume` on a finite
+    # product, which is why the finite form is the atlas's to write
+    "ProbabilityTheory.infinitePi_map_piCurry",
+    "infinitePi_map_piCurry_symm",
+    # cited by AISafetyAtlas/Analysis/NullImage.lean as the Mathlib lemma that
+    # identifies Hausdorff measure at the ambient dimension with Lebesgue volume,
+    # which is what turns a dimension bound into a null-set statement
+    "MeasureTheory.hausdorffMeasure_pi_real",
+    # cited by AISafetyAtlas/Analysis/MaximalMinor.lean as the square-matrix case
+    # Mathlib already has, which is why the rectangular one is the atlas's to write
+    "Matrix.linearIndependent_cols_iff_isUnit",
+    "Matrix.linearIndependent_cols_of_det_ne_zero",
     # cited by a vendored docstring (AISafetyAtlas/Upstream/Debate/Prob/Pmf.lean)
     # as the Mathlib lemma its primed variant restates
     "PMF.pure_apply",
@@ -70,6 +84,9 @@ EXEMPT = {
     "H_open", "H_closed", "argmin_a", "mono'", "implemented_by",
     # tactics and Lean/Mathlib vocabulary discussed in prose
     "sorry", "plausible", "tsum", "decide", "omega", "linarith", "gcongr",
+    # Mathlib's asymptotic predicate, named in prose by the atlas theorem that
+    # proves the rate predicate implies it
+    "IsTheta",
 }
 DEPS = [
     ROOT / ".lake" / "packages" / "PFR" / "PFR",

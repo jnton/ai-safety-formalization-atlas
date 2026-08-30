@@ -1,12 +1,12 @@
 # Project State
 
-Updated: 2026-08-22
+Updated: 2026-08-30
 
 **Unreleased work in progress.** `v0.7.0` below is still the last published
 release and nothing here supersedes it.
 
 **A causal-inference layer is what this tree adds most recently, and it is in no
-release.** Twelve library modules and twelve worked-example modules under
+release.** Fourteen library modules and fifteen worked-example modules under
 `AISafetyAtlas.Causal`, graded against three printed sources. Two different
 objects live there and neither is a special case of the other: `Causal.Model` is
 a causal Bayesian network — a graph with conditional probability tables — while
@@ -15,8 +15,112 @@ and SCIM, which consign randomness to exogenous variables and relate the
 endogenous ones deterministically. On top of the network sit the objects MAIS-A2
 phrases its problems over: semialgebraic classes, the `K(G)` parameter chart, a
 prefix-free sparse monomial code, the O24 genericity certificate, and a
-rational-weight query layer. There is no aggregating `Causal` facade and that is
+rational-weight query layer. The newest four modules are the goal layer
+MAIS-O33 is stated over — `Causal.Goal` for print's three temporal operators and
+`Psi_n`, `Causal.ControlledProcess`, `Causal.GoalDynamics` for trajectory laws by
+Ionescu-Tulcea and print's `(delta,n)`-bounded agents, and `Causal.Corruption`
+for first-action data and the adaptive randomized query protocol. There is no
+aggregating `Causal` facade and that is
 deliberate — these are peer modules, so a consumer imports the one it needs.
+
+**On top of that layer sits the MAIS conjecture ledger, also in no release.**
+Thirteen MAIS-linked ledger rows span ten printed problem numbers -- nine of
+agenda A2, plus A3's `prob:samples`, whose row shares none of the causal
+vocabulary. Nine are conjectures or graded candidate answers in
+`AISafetyAtlas.Conjectures.MAIS`; four are determine-problem specifications over
+a candidate answer. **Every row carries Lean.** The atlas covers fifteen printed
+problems in all, but the six it cannot state at all -- MAIS-O2, O28, O29(c),
+O30, O32 and O35 -- are recorded in the coverage matrix
+`docs/provenance/mais-a2-statement-coverage.md` and in the
+`mais-open-problems-2026` source entry, where MAIS-O1 and MAIS-O16 have always
+been, rather than as ledger rows. They held one until 2026-08-30; a row with no
+`lean`, no `Prop` and no `refutation` states a fact about this repository's
+coverage, and putting one on the conjecture board per unstatable problem is how
+a selective ledger becomes a coverage index for a single agenda. Six of the nine
+take agenda
+clauses as their graded source and three grade candidate statements
+submitted to MAIS issues [#4](https://github.com/lionellevine/MAIS/issues/4), [#8](https://github.com/lionellevine/MAIS/issues/8) and [#9](https://github.com/lionellevine/MAIS/issues/9). Seven are resolved and two remain open. An open
+conjecture asserts nothing: it is a compiling statement with no proof, and the
+ledger records for each one what would refute it. The settled rows are the
+exception, and each names the theorem that settled it. Rows graded against a
+printed source are stated at that source's own quantifier. A conjecture stated
+narrower than its source is a different question wearing the source's name. If
+a literal source statement is false, vacuous, ambiguous, or ill-posed, the
+ledger records that source problem rather than adding an atlas premise to rescue
+it; atlas-original variants and withdrawn encodings stay outside this ledger,
+recorded verbatim with their reason in
+`docs/provenance/retired-conjecture-rows.md` so that leaving is not an
+undocumented decision and the retired `CONJ-` numbers are never reused. Eight
+of the thirteen rows are resolved and each says which printed clause it covers
+-- a resolved row that answers one clause of three is not a resolved printed
+problem. **Seven of those eight say something about their printed problem.** The
+eighth is CONJ-003 (MAIS-O26), which is true because it has no instances:
+`conj:exact` is stated over the class that `prob:effective`'s *"fix one list
+supplied by a solution"* names, `Examples.Causal.O24Refutation.isEmpty_o24Solution`
+proves no such solution exists, and a universal over an empty domain holds
+without touching the `Theta(K log(1/epsilon))` rate the conjecture is about. It
+is counted as a resolved row because its `Prop` is proved, and it is not counted
+as a result.
+
+**The two newest results are negative, and both are answers to printed problems
+this tree could not state a week ago.** `Examples.Causal.O24Refutation.isEmpty_o24Solution`
+proves **MAIS-O24 has no solution** -- clauses (a) and (c) of `prob:effective`
+are incompatible for any list of polynomials and any constants, and neither (b)
+nor the complexity clauses are used. `Examples.Conjectures.MAIS.not_maisO33_etaStarPos`
+proves **MAIS-O33's persistent-corruption threshold is not positive**,
+unconditionally; the value `eta* = 0` is proved separately and is conditional on
+the uncorrupted-recovery baseline print cites and this tree does not formalize.
+Both rest on candidates submitted to the MAIS tracker -- issues
+[#7](https://github.com/lionellevine/MAIS/issues/7) and
+[#9](https://github.com/lionellevine/MAIS/issues/9), both by kumino -- and in
+both cases a step of the submitted argument did not survive: O24's final
+`mu`-then-`u` choice is circular against print's quantifier order and was
+reversed, and O33's `delta = 0` instance was replaced by `delta = 1/2` on
+action-independent kernels, which removes two dependencies Mathlib does not
+carry. **What is machine-checked in each is the candidate's claim, not the
+candidate's proof**, and the upstream comments say so.
+
+CONJ-025 is the other recent one: **MAIS-O38 is true**, under print's own
+two hypotheses and at every `m` where the printed sentence has content — every
+`m` with `1 ≤ k(m) < m`, not merely on a tail — proved by
+`Examples.Conjectures.MAIS.maisO38_polynomialSamplesSuffice_holds`. Two weaker
+forms of this row were published first and are gone: one asked for designs only
+eventually, and one guarded the conclusion but still assumed an atlas-supplied
+premise print does not write. The
+construction and the argument are MAIS issue [#30](https://github.com/lionellevine/MAIS/issues/30)'s, submitted by 26david26 and
+stated there to have been produced and checked entirely by AI systems with no
+human verification; the atlas supplied the transcription, the machine-check, and
+four domain-neutral facts Mathlib lacks that the proof needs -- polynomial
+genericity, maximal minors of a rectangular matrix, a hyperplane-family null
+bound standing in for the semialgebraic dimension theory the argument is usually
+phrased in, and measurability of a projection along a sigma-compact factor. Two
+readings of quantifiers print leaves unwritten are separately false and are
+carried beside the row as findings, not as answers.
+
+MAIS-O29(b) is the case worth reading, because what is claimed about it changed
+on 2026-08-23 and the claim before that date was a retraction.
+`boltzmann_minimax_floor` bounds a *deterministic* estimator where
+`subsec:queries` takes an infimum over randomized ones, so it bounds the wrong
+infimum; that retraction stands. What is new is a bound at print's own
+quantifier: `AISafetyAtlas.Conjectures.MAIS.O29Experiment` builds the sampled
+Boltzmann experiment and
+`Examples.Conjectures.MAIS.boltzmannMinimaxRisk_collision_bounds` pins the
+randomized minimax risk between `1/2` and `1` at the collision skeleton, at
+every budget and every inverse temperature. That answers (b) at one print-legal
+instance and at no other -- on a class where the risk decays, none of (b) is
+touched -- and it does not move CONJ-008, which stays `prob:boltzmann`(a) only,
+because (b) is a determine-clause and no truth-valued `Prop` is `Same` as one.
+
+MAIS-O27 has no *conjecture* row for the same reason -- it has one target row,
+CONJ-013, carrying a specification per clause -- and gained two negative
+instances
+the same day, both at `prob:floor`'s real quantifier now that all three of its
+clauses are stated there: `not_o27RealRadiusVanishes_collision` for (a), and
+`not_realEdgesSurviveAt_collision` for (c) at edge strength `λ`. Clause (c)'s
+*second* half -- print asks to exhibit, at the complementary pairs, a model and a
+member of its identified set omitting the edge -- is now
+`exists_strong_edge_omitted_collision` rather than a sentence about the proof of
+the first half.
 
 **Also unreleased, merged to `main` after `v0.7.0` was tagged**: Ashby's chapter
 11 and Touchette–Lloyd's control limits at printed scope behind an
@@ -77,7 +181,7 @@ public API, or axiom profile changed in either release.
 - Atlas Lean declarations: **248** (claim-row WRAPPER **13** / BRIDGE **5**).
 - Results stating a source claim: **49**; recording a formalization only: **37** (**28** on the public root import).
 - Reviewed AI-system bridges: **3**; statement-reviewed only: **1**.
-- Open conjectures: **1** of **1** recorded.
+- Open conjectures: **3** of **10** recorded; the ledger also holds **4** determine-problem targets. Problems the atlas cannot state carry no row at all and are recorded against their source directory, so this line does not count them; a resolved row states which printed clause it covers, and one of them (CONJ-003) is true only because its class is empty.
 - Claim results with statement-match (`EXACT`/`EQUIVALENT`): **14**; with `RELATED`-only formalization: **7**. Counts are claim rows, not records: an artifact row's grade is on the row and never in this number.
 - Rows carrying atlas Lean: **49** (**20** of them claim rows); catalogued candidate leads: **5**.
 <!-- END GENERATED REGISTRY SNAPSHOT -->
@@ -257,9 +361,13 @@ stale without anyone noticing.
     by [`.github/workflows/pages.yml`](.github/workflows/pages.yml) on pushes that
     touch `site/` (verified 2026-08-29).
   - **Reuse is mostly internal, and the share is falling.**
-    `scripts/report_consumers.py` reports 36 of 248 declarations consumed
-    outside `Examples/` (measured 2026-08-28; 21 of 105 at v0.7, so the share
-    fell from 20% to 15% while the corpus more than doubled). The spine and its
+    `scripts/report_consumers.py` reports 38 of 248 declarations consumed
+    outside `Examples/` (measured 2026-08-30; 21 of 105 at v0.7, so the share
+    fell from 20% to 15% while the corpus more than doubled). Two of the 38 are
+    new on this branch and are the only reuse the MAIS ledger created:
+    `Causal.Model.ancestors_eq_univ_iff` reaches `Conjectures.BinaryPair` and
+    `Conjectures.MAIS.O31Chart`, and `Causal.Skeleton.behaviorEq_of_observed_eq_empty`
+    reaches `Conjectures.BinaryPair`. The spine and its
     two domain consumers compose. The accumulation layer consumes the kernel
     without being consumed. Of the physical bridges, one declaration of eleven
     now reaches a sibling module and the rest are exercised only by their own

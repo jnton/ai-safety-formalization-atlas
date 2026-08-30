@@ -126,12 +126,56 @@
       "kind": "theorem",
       "deps": []
     },
+    "AISafetyAtlas.Analysis.ae_eval_ne_zero_uncurry": {
+      "kind": "theorem",
+      "deps": []
+    },
     "AISafetyAtlas.Analysis.basicSemialgebraic_union": {
       "kind": "theorem",
       "deps": [
         "AISafetyAtlas.Analysis.BasicSemialgebraic",
         "AISafetyAtlas.Analysis.PolySign"
       ]
+    },
+    "AISafetyAtlas.Analysis.borderedMinor": {
+      "kind": "definition",
+      "deps": []
+    },
+    "AISafetyAtlas.Analysis.borderedMinor_eq_zero_of_mem_span": {
+      "kind": "theorem",
+      "deps": [
+        "AISafetyAtlas.Analysis.borderedMinor"
+      ]
+    },
+    "AISafetyAtlas.Analysis.borderedMinor_sum": {
+      "kind": "theorem",
+      "deps": [
+        "AISafetyAtlas.Analysis.borderedMinor"
+      ]
+    },
+    "AISafetyAtlas.Analysis.contDiff_borderedMinor": {
+      "kind": "theorem",
+      "deps": [
+        "AISafetyAtlas.Analysis.borderedMinor"
+      ]
+    },
+    "AISafetyAtlas.Analysis.contDiff_det": {
+      "kind": "theorem",
+      "deps": []
+    },
+    "AISafetyAtlas.Analysis.exists_borderedMinor_ne_zero": {
+      "kind": "theorem",
+      "deps": [
+        "AISafetyAtlas.Analysis.borderedMinor"
+      ]
+    },
+    "AISafetyAtlas.Analysis.exists_det_ne_zero_of_linearIndependent": {
+      "kind": "theorem",
+      "deps": []
+    },
+    "AISafetyAtlas.Analysis.exists_independent_spanning_subfamily": {
+      "kind": "theorem",
+      "deps": []
     },
     "AISafetyAtlas.Analysis.isCompact_closedBox": {
       "kind": "theorem",
@@ -210,11 +254,43 @@
         "AISafetyAtlas.Analysis.IsSemialgebraic"
       ]
     },
+    "AISafetyAtlas.Analysis.measurableSet_exists_of_isClosed": {
+      "kind": "theorem",
+      "deps": []
+    },
     "AISafetyAtlas.Analysis.measure_setOf_eval_eq_zero_pi": {
       "kind": "theorem",
       "deps": []
     },
+    "AISafetyAtlas.Analysis.volume_image_eq_zero_of_card_lt": {
+      "kind": "theorem",
+      "deps": []
+    },
+    "AISafetyAtlas.Analysis.volume_image_eq_zero_of_contDiff": {
+      "kind": "theorem",
+      "deps": []
+    },
+    "AISafetyAtlas.Analysis.volume_image_eq_zero_of_contDiffOn": {
+      "kind": "theorem",
+      "deps": []
+    },
+    "AISafetyAtlas.Analysis.volume_ne_zero_pi_pi": {
+      "kind": "theorem",
+      "deps": []
+    },
+    "AISafetyAtlas.Analysis.volume_range_eq_zero_of_contDiff": {
+      "kind": "theorem",
+      "deps": []
+    },
     "AISafetyAtlas.Analysis.volume_setOf_eval_eq_zero": {
+      "kind": "theorem",
+      "deps": []
+    },
+    "AISafetyAtlas.Analysis.volume_setOf_exists_eval_eq_zero": {
+      "kind": "theorem",
+      "deps": []
+    },
+    "AISafetyAtlas.Analysis.volume_setOf_exists_forall_dotProduct_eq_zero": {
       "kind": "theorem",
       "deps": []
     }

@@ -381,10 +381,11 @@ validation means:
   `Registry.lean`);
 - every public theorem and lemma in the facade closure, **and** every public
   theorem, lemma and definition in the off-root build targets and their import
-  closure, is kernel axiom-clean up to the three standard classical axioms
-  (`scripts/check_print_axioms.py` / `#print axioms`). The same script asserts
-  that no `.lean` under `AISafetyAtlas/` sits outside that set, so the scope is
-  a checked property rather than a description that can drift.
+  closure -- which is where the conjecture layer lives -- is kernel axiom-clean
+  up to the three standard classical axioms (`scripts/check_print_axioms.py` /
+  `#print axioms`). The same script asserts that no `.lean` under
+  `AISafetyAtlas/` sits outside that set, so the scope is a checked property
+  rather than a description that can drift.
 
 Validators do **not** prove:
 

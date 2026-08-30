@@ -10,7 +10,7 @@ Edges come from the elaborated Lean environment. This answers the question the p
 
 So `A → B` means *`B` occurs in `A`'s statement, or in `A`'s body when `A` is a definition*. A lemma used only inside a proof does not appear. Reading the table as a complete call graph would be wrong, and the two sections below are scoped so that they stay true under this limit.
 
-`37` authored declarations in `AISafetyAtlas.Analysis.*` (29 theorems). Compiler-generated companions and projections are dropped.
+`54` authored declarations in `AISafetyAtlas.Analysis.*` (45 theorems). Compiler-generated companions and projections are dropped.
 
 ## Load-bearing declarations
 
@@ -56,7 +56,16 @@ None.
 | `ae_eval_ne_zero_addHaar` | theorem | — |
 | `ae_eval_ne_zero_fintype` | theorem | — |
 | `ae_eval_ne_zero_pi` | theorem | — |
+| `ae_eval_ne_zero_uncurry` | theorem | — |
 | `basicSemialgebraic_union` | theorem | `BasicSemialgebraic`, `PolySign` |
+| `borderedMinor` | definition | — |
+| `borderedMinor_eq_zero_of_mem_span` | theorem | `borderedMinor` |
+| `borderedMinor_sum` | theorem | `borderedMinor` |
+| `contDiff_borderedMinor` | theorem | `borderedMinor` |
+| `contDiff_det` | theorem | — |
+| `exists_borderedMinor_ne_zero` | theorem | `borderedMinor` |
+| `exists_det_ne_zero_of_linearIndependent` | theorem | — |
+| `exists_independent_spanning_subfamily` | theorem | — |
 | `isCompact_closedBox` | theorem | `ClosedBox` |
 | `isSemialgebraic_biInter` | theorem | `IsSemialgebraic` |
 | `isSemialgebraic_biUnion` | theorem | `IsSemialgebraic` |
@@ -69,5 +78,13 @@ None.
 | `isSemialgebraic_setOf_eval_nonneg` | theorem | `IsSemialgebraic` |
 | `isSemialgebraic_setOf_eval_pos` | theorem | `IsSemialgebraic` |
 | `isSemialgebraic_univ` | theorem | `IsSemialgebraic` |
+| `measurableSet_exists_of_isClosed` | theorem | — |
 | `measure_setOf_eval_eq_zero_pi` | theorem | — |
+| `volume_image_eq_zero_of_card_lt` | theorem | — |
+| `volume_image_eq_zero_of_contDiff` | theorem | — |
+| `volume_image_eq_zero_of_contDiffOn` | theorem | — |
+| `volume_ne_zero_pi_pi` | theorem | — |
+| `volume_range_eq_zero_of_contDiff` | theorem | — |
 | `volume_setOf_eval_eq_zero` | theorem | — |
+| `volume_setOf_exists_eval_eq_zero` | theorem | — |
+| `volume_setOf_exists_forall_dotProduct_eq_zero` | theorem | — |

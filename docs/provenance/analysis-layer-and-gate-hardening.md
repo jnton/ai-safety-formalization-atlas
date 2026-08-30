@@ -22,6 +22,20 @@ Declarations: `AISafetyAtlas.Analysis.ae_eval_ne_zero_pi`,
 `AISafetyAtlas.Analysis.volume_setOf_eval_eq_zero`,
 `AISafetyAtlas.Analysis.ae_eval_ne_zero_addHaar`.
 
+**Extended for MAIS-O38.** The first consumer wanted the statement over
+matrix-shaped points, `ι → κ → ℝ`, where the variables are indexed by `ι × κ`.
+Mathlib has `MeasurableEquiv.curry` but no measure-preserving form of it at
+finite products, so the module also carries
+`AISafetyAtlas.Analysis.volume_measurePreserving_uncurry`,
+`AISafetyAtlas.Analysis.volume_measurePreserving_curry`,
+`AISafetyAtlas.Analysis.ae_eval_ne_zero_uncurry` and
+`AISafetyAtlas.Analysis.volume_ne_zero_pi_pi` — the last because a contradiction
+drawn from `∀ᵐ x, False` has to know the measure is not zero, and `ι → κ → ℝ`
+carries no `IsAddHaarMeasure` instance. All four are as domain-neutral as the
+rest and are named as Mathlib would name them. The search behind the currying
+absence claim is in
+[`mais-o38-transcription.md`](mais-o38-transcription.md).
+
 **Why this generality and no more.** The statement is at the generality
 genericity arguments actually use — a product of atomless measures — rather than
 the widest form provable. Mathlib at the pinned revision carries only the

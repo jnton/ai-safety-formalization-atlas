@@ -28,6 +28,13 @@ reach for.
 | `ae_eval_ne_zero_fintype` | the same at an arbitrary finite variable type — the form that gets applied |
 | `volume_setOf_eval_eq_zero` | the Lebesgue null-set form |
 | `ae_eval_ne_zero_addHaar` | the same for any additive Haar measure |
+| `ae_eval_ne_zero_uncurry` | the a.e. statement over matrix-shaped points |
+| `volume_ne_zero_pi_pi` | `volume` on `ι → κ → ℝ` is not the zero measure |
+
+The two currying transfer lemmas the last two are proved through --
+`volume_measurePreserving_uncurry` and `volume_measurePreserving_curry` -- are
+`private`. They are named nowhere outside this file, so exporting them would pin
+an API surface no consumer reads.
 
 ## Why the hypothesis is `NoAtoms` on each factor rather than Haar
 
@@ -41,16 +48,23 @@ and is not otherwise used.
 ## Provenance
 
 This module is written to be lifted upstream: the declarations are named as
-Mathlib would name them and the proofs use no atlas definitions. **Nothing in
-this tree consumes it yet**, and that is deliberate — it is stated where it can
-be reviewed against Mathlib rather than against the problem that motivated it.
+Mathlib would name them and the proofs use no atlas definitions. It is stated
+where it can be reviewed against Mathlib rather than against the problem that
+motivated it.
 
 That problem is MAIS-O38 (`prob:samples`, MAIS-A3 Problem 4.8), whose
-full-sparsity finding is stuck at a pointwise statement for want of exactly this
-lemma: it needs the spark-condition set to be non-null, and print quantifies
-over dictionaries almost everywhere. The transcription of that problem, and the
-searches recording this lemma's absence from Mathlib, live on the conjecture
-branch and are not in this tree.
+full-sparsity finding was stuck at a pointwise statement for want of exactly
+this lemma: it needs the spark-condition set to be non-null, and print
+quantifies over dictionaries almost everywhere. The one consumer is
+`AISafetyAtlas.Examples.Conjectures.MAIS.ae_sparkCondition`, which spends
+`ae_eval_ne_zero_uncurry` on a minor determinant; nothing in this module
+mentions that problem's vocabulary, and the transcription lives elsewhere.
+
+`volume_ne_zero_pi_pi` is here for the same consumer and is the one declaration
+below that is not a genericity statement. An almost-everywhere statement refutes
+nothing over the zero measure, so a contradiction drawn from `∀ᵐ x, False` has
+to know the measure is not zero; `ι → κ → ℝ` carries no `IsAddHaarMeasure`
+instance, since the instance is on the flat `ι → ℝ`.
 -/
 
 namespace AISafetyAtlas.Analysis
@@ -224,6 +238,34 @@ public theorem volume_setOf_eval_eq_zero {ι : Type*} [Fintype ι]
   rw [MeasureTheory.ae_iff] at this
   simpa using this
 
+/-- **A finite list of nonzero polynomials vanishes only on a null set.** Each
+member's zero set is null, and finitely many null sets union to a null set.
+
+This is the form a covering argument needs: if some *set* of positive measure is
+covered by the vanishing loci of a finite list, then one member of the list is
+the zero polynomial. -/
+public theorem volume_setOf_exists_eval_eq_zero {ι : Type*} [Fintype ι]
+    (l : List (MvPolynomial ι ℝ)) (hl : ∀ p ∈ l, p ≠ 0) :
+    volume {x : ι → ℝ | ∃ p ∈ l, MvPolynomial.eval x p = 0} = 0 := by
+  induction l with
+  | nil => simp
+  | cons a t ih =>
+    have hset : {x : ι → ℝ | ∃ p ∈ a :: t, MvPolynomial.eval x p = 0} =
+        {x : ι → ℝ | MvPolynomial.eval x a = 0} ∪
+          {x : ι → ℝ | ∃ p ∈ t, MvPolynomial.eval x p = 0} := by
+      ext x
+      simp only [List.mem_cons, Set.mem_setOf_eq, Set.mem_union]
+      constructor
+      · rintro ⟨p, hp | hp, hz⟩
+        · exact Or.inl (hp ▸ hz)
+        · exact Or.inr ⟨p, hp, hz⟩
+      · rintro (hz | ⟨p, hp, hz⟩)
+        · exact ⟨a, Or.inl rfl, hz⟩
+        · exact ⟨p, Or.inr hp, hz⟩
+    rw [hset]
+    exact measure_union_null (volume_setOf_eval_eq_zero (hl a (List.mem_cons_self ..)))
+      (ih fun p hp ↦ hl p (List.mem_cons_of_mem a hp))
+
 /-- **The additive Haar form.** Every additive Haar measure on `ι → ℝ` is a
 scalar multiple of `volume`, so it discards the same null sets. -/
 public theorem ae_eval_ne_zero_addHaar {ι : Type*} [Fintype ι] (μ : Measure (ι → ℝ))
@@ -235,5 +277,89 @@ public theorem ae_eval_ne_zero_addHaar {ι : Type*} [Fintype ι] (μ : Measure (
   exact hac.ae_le (ae_eval_ne_zero_fintype hp)
 
 end Fintype
+
+section Curry
+
+/-! ## Matrix-shaped variables
+
+A genericity argument about matrices indexes its indeterminates by `ι × κ` but
+quantifies over the function space `ι → κ → ℝ`, so it needs currying to be
+measure preserving. Mathlib has `MeasurableEquiv.curry` and the
+infinite-product statements `ProbabilityTheory.infinitePi_map_piCurry` and
+`infinitePi_map_piCurry_symm`, but no finite-product `volume` form. -/
+
+/-- **Uncurrying is measure preserving** for finite products of Lebesgue
+measure. This is the direction that proves itself: the target is a flat product,
+so `MeasureTheory.Measure.pi_eq` applies, and the preimage of a box is a box of
+boxes.
+
+Private: nothing outside this file names it. It is the proof of
+`volume_measurePreserving_curry` and of `volume_ne_zero_pi_pi`, and those two
+are what the genericity arguments call. -/
+private theorem volume_measurePreserving_uncurry (ι κ : Type*) [Fintype ι] [Fintype κ] :
+    MeasurePreserving (MeasurableEquiv.curry ι κ ℝ).symm
+      (volume : Measure (ι → κ → ℝ)) (volume : Measure (ι × κ → ℝ)) where
+  measurable := (MeasurableEquiv.curry ι κ ℝ).symm.measurable
+  map_eq := by
+    rw [MeasureTheory.volume_pi]
+    refine (Measure.pi_eq fun t _ => ?_).symm
+    rw [MeasurableEquiv.map_apply]
+    have hpre : (MeasurableEquiv.curry ι κ ℝ).symm ⁻¹' (Set.univ.pi t)
+        = Set.univ.pi fun i => Set.univ.pi fun j => t (i, j) := by
+      ext x
+      simp [MeasurableEquiv.coe_curry_symm, Function.uncurry, Set.mem_pi, Prod.forall]
+    rw [hpre, MeasureTheory.volume_pi, Measure.pi_pi]
+    simp_rw [Measure.pi_pi]
+    exact (Fintype.prod_prod_type (fun q : ι × κ => volume (t q))).symm
+
+/-- **Currying is measure preserving**, the form the genericity argument uses.
+
+Private for the same reason as `volume_measurePreserving_uncurry`: it is the
+proof of `ae_eval_ne_zero_uncurry` and is named nowhere else. -/
+private theorem volume_measurePreserving_curry (ι κ : Type*) [Fintype ι] [Fintype κ] :
+    MeasurePreserving (MeasurableEquiv.curry ι κ ℝ)
+      (volume : Measure (ι × κ → ℝ)) (volume : Measure (ι → κ → ℝ)) := by
+  simpa using
+    (volume_measurePreserving_uncurry ι κ).symm (MeasurableEquiv.curry ι κ ℝ).symm
+
+/-- Evaluation at an uncurried point is measurable in the matrix. -/
+private theorem measurable_eval_uncurry {ι κ : Type*} [Fintype ι] [Fintype κ]
+    (p : MvPolynomial (ι × κ) ℝ) :
+    Measurable fun A : ι → κ → ℝ => MvPolynomial.eval (Function.uncurry A) p :=
+  (MvPolynomial.continuous_eval (p := p)).measurable.comp
+    (measurable_pi_iff.2 fun q => (measurable_pi_apply q.2).comp (measurable_pi_apply q.1))
+
+/-- **A nonzero polynomial in matrix-indexed variables is nonzero at almost
+every matrix.** `ae_eval_ne_zero_fintype` states this over `ι × κ → ℝ`; this is
+the same fact over `ι → κ → ℝ`, which is where a statement about matrices
+quantifies. -/
+public theorem ae_eval_ne_zero_uncurry {ι κ : Type*} [Fintype ι] [Fintype κ]
+    {p : MvPolynomial (ι × κ) ℝ} (hp : p ≠ 0) :
+    ∀ᵐ A : ι → κ → ℝ, MvPolynomial.eval (Function.uncurry A) p ≠ 0 := by
+  have hmp := volume_measurePreserving_curry ι κ
+  have hmeas : MeasurableSet {A : ι → κ → ℝ | MvPolynomial.eval (Function.uncurry A) p ≠ 0} :=
+    (measurable_eval_uncurry p) (measurableSet_singleton 0).compl
+  rw [← hmp.map_eq, MeasureTheory.ae_map_iff hmp.measurable.aemeasurable hmeas]
+  filter_upwards [ae_eval_ne_zero_fintype hp] with x hx
+  simpa [MeasurableEquiv.coe_curry] using hx
+
+/-- `volume` on a matrix-shaped function space is not the zero measure.
+
+Needed wherever an almost-everywhere statement is used to *refute* something:
+`∀ᵐ x, False` is harmless over the zero measure, so a contradiction drawn from
+one has to know the measure is nonzero. `Fin n → Fin m → ℝ` carries no
+`IsAddHaarMeasure` instance — the instance is on the flat `ι → ℝ` — so this is
+transported across `volume_measurePreserving_uncurry` rather than looked up. -/
+public theorem volume_ne_zero_pi_pi (ι κ : Type*) [Fintype ι] [Fintype κ] :
+    (volume : Measure (ι → κ → ℝ)) ≠ 0 := by
+  intro h
+  haveI := isAddHaarMeasure_volume_pi (ι × κ)
+  have hpos : 0 < (volume : Measure (ι × κ → ℝ)) Set.univ :=
+    isOpen_univ.measure_pos volume Set.univ_nonempty
+  refine hpos.ne' ?_
+  rw [← (volume_measurePreserving_uncurry ι κ).map_eq, MeasurableEquiv.map_apply, h]
+  simp
+
+end Curry
 
 end AISafetyAtlas.Analysis
