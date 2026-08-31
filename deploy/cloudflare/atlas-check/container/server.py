@@ -11,6 +11,7 @@ from typing import Any
 
 API_SCHEMA = "atlas-check-api/1"
 INPUT_SCHEMA = "atlas-check/1"
+BODY_LENGTH_HEADER = "x-atlas-body-length"
 CHECKER = Path(os.getenv("ATLAS_CHECK_BINARY", "/usr/local/bin/atlas-check"))
 PORT = int(os.getenv("PORT", "8080"))
 MAX_BODY_BYTES = int(os.getenv("ATLAS_CHECK_MAX_BODY_BYTES", "1048576"))
@@ -138,18 +139,21 @@ class Handler(BaseHTTPRequestHandler):
             )
             return
 
-        length_header = self.headers.get("content-length")
+        # Public traffic reaches this process through the Worker, which buffers
+        # the body and rewrites x-atlas-body-length from the actual ArrayBuffer
+        # size. Fall back to Content-Length for direct local tests.
+        length_header = self.headers.get(BODY_LENGTH_HEADER) or self.headers.get("content-length")
         if length_header is None:
             self._send_json(
                 411,
-                {"schema": API_SCHEMA, "error": {"code": "length_required", "message": "Content-Length is required."}},
+                {"schema": API_SCHEMA, "error": {"code": "length_required", "message": "Request body length is required."}},
             )
             return
 
         try:
             content_length = int(length_header)
         except ValueError:
-            self._send_json(400, {"schema": API_SCHEMA, "error": {"code": "invalid_length", "message": "Invalid Content-Length."}})
+            self._send_json(400, {"schema": API_SCHEMA, "error": {"code": "invalid_length", "message": "Invalid request body length."}})
             return
 
         if content_length < 0 or content_length > MAX_BODY_BYTES:
