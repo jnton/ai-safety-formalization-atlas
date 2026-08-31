@@ -53,6 +53,9 @@ export default {
         });
       }
 
+      // Buffer once at the Worker boundary so oversized models are rejected
+      // before a container is started. Passing an ArrayBuffer body also lets the
+      // Workers runtime emit the correct Content-Length to the HTTP container.
       const body = await request.arrayBuffer();
       if (body.byteLength > MAX_BODY_BYTES) {
         return jsonResponse(413, {
@@ -64,13 +67,10 @@ export default {
         });
       }
 
-      const headers = new Headers(request.headers);
-      headers.set("content-length", String(body.byteLength));
-
       return proxyToChecker(
         new Request(request.url, {
           method: "POST",
-          headers,
+          headers: request.headers,
           body,
         }),
         env,
