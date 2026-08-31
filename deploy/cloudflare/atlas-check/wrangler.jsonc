@@ -1,0 +1,32 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ai-safety-atlas-check",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-31",
+  "containers": [
+    {
+      "class_name": "AtlasCheckContainer",
+      "image": "./Dockerfile",
+      "image_build_context": "../../..",
+      "max_instances": 2,
+      "instance_type": "basic"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "ATLAS_CHECK",
+        "class_name": "AtlasCheckContainer"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["AtlasCheckContainer"]
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}
