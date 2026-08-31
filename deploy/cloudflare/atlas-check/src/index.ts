@@ -2,6 +2,7 @@ import { Container, getRandom } from "@cloudflare/containers";
 
 const INSTANCE_COUNT = 2;
 const MAX_BODY_BYTES = 1_048_576;
+const BODY_LENGTH_HEADER = "x-atlas-body-length";
 
 export class AtlasCheckContainer extends Container {
   defaultPort = 8080;
@@ -54,8 +55,10 @@ export default {
       }
 
       // Buffer once at the Worker boundary so oversized models are rejected
-      // before a container is started. Passing an ArrayBuffer body also lets the
-      // Workers runtime emit the correct Content-Length to the HTTP container.
+      // before a container is started. The private length header is rewritten
+      // here rather than trusted from the public request, so the container can
+      // read the body correctly regardless of the HTTP transfer encoding used
+      // between Workers and Containers.
       const body = await request.arrayBuffer();
       if (body.byteLength > MAX_BODY_BYTES) {
         return jsonResponse(413, {
@@ -67,10 +70,13 @@ export default {
         });
       }
 
+      const headers = new Headers(request.headers);
+      headers.set(BODY_LENGTH_HEADER, String(body.byteLength));
+
       return proxyToChecker(
         new Request(request.url, {
           method: "POST",
-          headers: request.headers,
+          headers,
           body,
         }),
         env,
