@@ -1,0 +1,7 @@
+.git
+.lake
+**/__pycache__
+**/*.pyc
+deploy/cloudflare/atlas-check/node_modules
+node_modules
+.DS_Store
