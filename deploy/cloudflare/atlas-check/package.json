@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "test:http": "cd container && python3 -m unittest -v test_server.py",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
