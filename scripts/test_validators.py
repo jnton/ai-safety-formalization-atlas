@@ -31,10 +31,12 @@ DATA = [
     "conjectures.yaml",
     "tasks.yaml",
     "docs/provenance/formalization-search.json",
+    "docs/provenance/source-review.json",
 ]
 EXTRA = ["AISafetyAtlas.lean"]
 SCRIPTS = [
     "validate_registry.py",
+    "validate_source_review.py",
     "validate_conjectures.py",
     "validate_tasks.py",
     # validate_conjectures imports it for the Lean import-graph helpers.
@@ -186,6 +188,54 @@ def synthetic_blocked_conjecture(data: dict) -> dict:
 
 
 CASES = [
+    (
+        "source review: ledger cannot carry undocumented root fields",
+        "validate_source_review.py",
+        "docs/provenance/source-review.json",
+        lambda d: d.__setitem__("unexpected", True),
+        "must contain exactly",
+    ),
+    (
+        "source review: every work source must receive an outcome",
+        "validate_source_review.py",
+        "docs/provenance/source-review.json",
+        lambda d: d["records"].pop("survey-ref-018"),
+        "must evaluate every work source",
+    ),
+    (
+        "source review: source input changes invalidate its cached result",
+        "validate_source_review.py",
+        "docs/provenance/source-review.json",
+        lambda d: d["records"]["survey-ref-018"].__setitem__(
+            "input_fingerprint", "0" * 64
+        ),
+        "does not match registry.yaml",
+    ),
+    (
+        "source review: a status must follow its machine findings",
+        "validate_source_review.py",
+        "docs/provenance/source-review.json",
+        lambda d: d["records"]["survey-ref-018"].update(
+            {"lookup_status": "HTTP_ERROR", "status": "AUTOMATED_CLEAR"}
+        ),
+        "status does not match its recorded outcomes",
+    ),
+    (
+        "source review: related DOI evidence has a fixed shape",
+        "validate_source_review.py",
+        "docs/provenance/source-review.json",
+        lambda d: d["records"]["survey-ref-018"].__setitem__(
+            "related_dois",
+            [
+                {
+                    "doi": "10.1000/example",
+                    "url": "https://doi.org/10.1000/example",
+                    "unexpected": True,
+                }
+            ],
+        ),
+        "related DOI 0 must contain exactly",
+    ),
     (
         "registry: graded row citing only a directory source",
         "validate_registry.py",
@@ -1284,6 +1334,7 @@ def run_control() -> list[str]:
         tmp = build_tree(Path(raw))
         for script in (
             "validate_registry.py",
+            "validate_source_review.py",
             "validate_conjectures.py",
             "validate_tasks.py",
         ):

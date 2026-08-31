@@ -67,6 +67,9 @@ cd "$ROOT"
 echo "==> validate_registry"
 python3 scripts/validate_registry.py
 
+echo "==> validate_source_review"
+python3 scripts/validate_source_review.py
+
 echo "==> validate_conjectures"
 python3 scripts/validate_conjectures.py
 
