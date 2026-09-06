@@ -13,6 +13,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from check_print_axioms import OFF_ROOT_FACADES  # noqa: E402
+from source_review.catalog import render_source_catalog  # noqa: E402
 from source_review.report import render_source_review  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,6 +28,7 @@ CONTRIBUTOR_TASKS = ROOT / "docs/guide/contributor-tasks.md"
 CONJECTURE_CHECKS = ROOT / "AISafetyAtlas/Conjectures/Checks.lean"
 SOURCE_INDEX = ROOT / "docs/status/sources/README.md"
 SURVEY_SOURCE_REPORT = ROOT / "docs/status/sources/brcic-yampolskiy-2023.md"
+SOURCE_CATALOG_REPORT = ROOT / "docs/status/sources/source-catalog.md"
 SOURCE_REVIEW_REPORT = ROOT / "docs/status/sources/source-review.md"
 LANDSCAPE_INDEX = ROOT / "docs/status/landscape-index.md"
 RELATIONS = ROOT / "docs/status/relations.md"
@@ -731,16 +733,17 @@ def render_source_index(registry: dict) -> str:
     )
     lines += [
         "",
-        "## Per-source coverage reports",
+        "## Generated source reports",
         "",
         *(
             f"- [`{path.name}`]({path.name})"
             for path in report_paths
         ),
-        "" if report_paths else "No per-source report has been generated yet.",
+        "" if report_paths else "No source report has been generated yet.",
         "",
-        "A source without a report is one nothing has been drawn from yet. That is a",
-        "normal state, not a gap.",
+        "Coverage reports follow one catalogued source. The source catalog is a complete,",
+        "human-readable record of all metadata, provenance, and citing claims for every catalogued entry.",
+        "The source-review report is a generated, rate-limited metadata and rights comparison across works.",
         "",
     ]
     return "\n".join(lines)
@@ -1661,6 +1664,11 @@ def main() -> None:
     )
     stale |= update(
         SURVEY_SOURCE_REPORT, render_survey_source_report(registry), args.check
+    )
+    stale |= update(
+        SOURCE_CATALOG_REPORT,
+        render_source_catalog(registry, source_review, conjectures),
+        args.check,
     )
     stale |= update(
         SOURCE_REVIEW_REPORT, render_source_review(registry, source_review), args.check

@@ -1,5 +1,6 @@
 """Public facade for the source-review scripts and their focused regression tests."""
 
+from .catalog import render_source_catalog
 from .lookups import (
     HostRateLimiter,
     crossref_url,
@@ -61,6 +62,7 @@ __all__ = [
     "input_fingerprint",
     "metadata_comparisons",
     "reclassify_record",
+    "render_source_catalog",
     "render_source_review",
     "source_catalogue",
     "successful_record",

@@ -253,3 +253,29 @@ def test_review_board_supports_multiple_methods_for_findings() -> None:
     ) in report
     assert "[Crossref](https://api.crossref.org/v1/works/10.13140" in report
     assert "[Source page](<https://doi.org/10.13140/RG.2.2.13245.28641>)" in report
+
+
+def test_source_catalog_renders_cited_in_atlas_links() -> None:
+    _refresh_module()
+
+    registry = {
+        "results": [
+            {
+                "id": "ST-1",
+                "name": "Statement 1",
+                "original_source_refs": ["src-a", "src-b"],
+            },
+        ],
+        "source_catalog": {
+            "src-a": {"citation": "Source A citation", "role": "work", "locator": "https://doi.org/10.1/a"},
+            "src-b": {"citation": "Source B citation", "role": "work", "locator": "https://doi.org/10.1/b"},
+        },
+    }
+    review = {
+        "records": {
+            "src-a": {"status": "AUTOMATED_CLEAR"},
+            "src-b": {"status": "AUTOMATED_CLEAR"},
+        }
+    }
+    catalog = views.render_source_catalog(registry, review, {"conjectures": []})
+    assert "- **Cited in Atlas:** [`ST-1`](../formalization-status.md) (*Statement 1*)" in catalog
