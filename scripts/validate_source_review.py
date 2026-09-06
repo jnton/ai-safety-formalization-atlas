@@ -16,6 +16,11 @@ from urllib.parse import urlsplit
 ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "registry.yaml"
 REVIEW = ROOT / "docs/provenance/source-review.json"
+DISPOSITIONS = ROOT / "docs/provenance/source-review-dispositions.json"
+
+sys.path.insert(0, str(ROOT / "scripts"))
+from source_review.schema import actionable_findings, compute_finding_fingerprint  # noqa: E402
+
 SCHEMA_VERSION = 3
 METADATA_FIELDS = (
     "identifier",
@@ -42,9 +47,11 @@ RIGHTS_OUTCOMES = {
     "RIGHTS_UNAVAILABLE",
 }
 LOOKUP_STATUSES = {"OK", "MISSING_LOCATOR", "HTTP_ERROR", "PARSE_ERROR"}
-RECORD_STATUSES = {"AUTOMATED_CLEAR", "NEEDS_HUMAN", "LOOKUP_FAILED"}
+RECORD_STATUSES = {"NO_AUTOMATED_FOLLOWUP", "AUTOMATED_CLEAR", "NEEDS_HUMAN", "LOOKUP_FAILED"}
+DISPOSITION_STATUSES = {"REVIEWED_NO_CHANGE"}
 PROVIDERS = {"arxiv", "crossref", "html", "none"}
 SHA256 = re.compile(r"[0-9a-f]{64}")
+ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def fail(message: str) -> NoReturn:
@@ -119,7 +126,7 @@ def expected_status(
         return "NEEDS_HUMAN"
     if related_dois:
         return "NEEDS_HUMAN"
-    return "AUTOMATED_CLEAR"
+    return "NO_AUTOMATED_FOLLOWUP"
 
 
 def validate_record(source_id: str, source: dict[str, Any], value: object) -> str:
@@ -234,6 +241,94 @@ def validate_record(source_id: str, source: dict[str, Any], value: object) -> st
     return status
 
 
+def validate_dispositions(
+    sources: dict[str, dict[str, Any]],
+    records: dict[str, dict[str, Any]],
+    dispositions_path: Path,
+) -> int:
+    """Validate human review dispositions against current active machine findings.
+
+    Invariants enforced:
+    1. The dispositions file exists and uses schema_version 1.
+    2. Every source ID must exist in registry.yaml as a work.
+    3. Every finding ID must exist as an active actionable finding on that record.
+    4. reviewed_by must be a non-empty identity string naming the human
+       responsible for the substantive review decision. An AI agent may
+       mechanically record a disposition entry only upon explicit instruction
+       from that human decision-maker.
+    5. The recorded finding_fingerprint must match the computed substantive fingerprint.
+    """
+    try:
+        data = mapping(
+            json.loads(dispositions_path.read_text(encoding="utf-8")),
+            "source-review-dispositions.json",
+        )
+    except (OSError, json.JSONDecodeError) as error:
+        fail(f"source-review-dispositions.json: {error}")
+
+    allowed_top_keys = {"schema_version", "dispositions", "description"}
+    if not {"schema_version", "dispositions"}.issubset(set(data)):
+        fail("source-review-dispositions.json must contain 'schema_version' and 'dispositions'")
+    if set(data) - allowed_top_keys:
+        fail(f"source-review-dispositions.json has extra keys: {sorted(set(data) - allowed_top_keys)}")
+    if data.get("schema_version") != 1:
+        fail("source-review-dispositions.json must use schema_version 1")
+
+    dispositions = mapping(data.get("dispositions"), "dispositions must be an object")
+    total_reviewed = 0
+
+    for source_id, source_disps in sorted(dispositions.items()):
+        if source_id not in sources:
+            fail(f"source-review-dispositions.json names unknown work source {source_id!r}")
+        source = sources[source_id]
+        record = records.get(source_id)
+        if not record:
+            fail(f"source-review-dispositions.json references un-audited source {source_id!r}")
+        if not isinstance(source_disps, dict) or not source_disps:
+            fail(f"{source_id} dispositions must be a non-empty object")
+
+        active_findings = actionable_findings(source_id, source, record)
+
+        for finding_id, disp_entry in sorted(source_disps.items()):
+            if finding_id not in active_findings:
+                fail(
+                    f"{source_id} has disposition for nonexistent or inactive finding {finding_id!r}; "
+                    "dispositions may only target active machine findings"
+                )
+            finding = active_findings[finding_id]
+            entry = mapping(disp_entry, f"{source_id}/{finding_id} disposition must be an object")
+            required_keys = {"finding_fingerprint", "status", "reviewed_by", "reviewed_on", "reason"}
+            if set(entry) != required_keys:
+                fail(f"{source_id}/{finding_id} disposition must contain exactly {sorted(required_keys)}")
+
+            status = text(entry.get("status"), f"{source_id}/{finding_id} status")
+            if status not in DISPOSITION_STATUSES:
+                fail(f"{source_id}/{finding_id} status must be one of {sorted(DISPOSITION_STATUSES)}")
+
+            reviewed_by = text(entry.get("reviewed_by"), f"{source_id}/{finding_id} reviewed_by")
+            if not reviewed_by.strip():
+                fail(f"{source_id}/{finding_id} reviewed_by must be a non-empty identity string")
+
+            reviewed_on = text(entry.get("reviewed_on"), f"{source_id}/{finding_id} reviewed_on")
+            if not ISO_DATE.fullmatch(reviewed_on):
+                fail(f"{source_id}/{finding_id} reviewed_on must be an ISO date YYYY-MM-DD ({reviewed_on!r})")
+
+            text(entry.get("reason"), f"{source_id}/{finding_id} reason")
+
+            recorded_fp = text(entry.get("finding_fingerprint"), f"{source_id}/{finding_id} finding_fingerprint")
+            if not SHA256.fullmatch(recorded_fp):
+                fail(f"{source_id}/{finding_id} finding_fingerprint must be a SHA-256 digest")
+            expected_fp = compute_finding_fingerprint(finding)
+            if recorded_fp != expected_fp:
+                fail(
+                    f"{source_id} finding {finding_id!r} disposition fingerprint is stale "
+                    f"(recorded={recorded_fp}, current={expected_fp}); underlying evidence changed, re-review required"
+                )
+            total_reviewed += 1
+
+    return total_reviewed
+
+
 def main() -> None:
     try:
         registry = mapping(json.loads(REGISTRY.read_text(encoding="utf-8")), "registry.yaml")
@@ -264,9 +359,11 @@ def main() -> None:
     for source_id, source in sources.items():
         status = validate_record(source_id, source, records[source_id])
         counts[status] = counts.get(status, 0) + 1
+    reviewed_count = validate_dispositions(sources, records, DISPOSITIONS)
     print(
         "source review ok: "
         + ", ".join(f"{status}={count}" for status, count in sorted(counts.items()))
+        + f", dispositions={reviewed_count}"
     )
 
 

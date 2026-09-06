@@ -10,7 +10,7 @@ def review_signal_links(source_id: str, rec: dict[str, Any]) -> list[str]:
     if not rec:
         return []
     status = rec.get("status")
-    if status == "AUTOMATED_CLEAR":
+    if status in {"NO_AUTOMATED_FOLLOWUP", "AUTOMATED_CLEAR"}:
         return [f"[All bibliographic fields match](source-review.md#clear-{source_id})"]
     if status == "LOOKUP_FAILED":
         return [f"[Lookup error or retrieval gap](source-review.md#gap-{source_id})"]

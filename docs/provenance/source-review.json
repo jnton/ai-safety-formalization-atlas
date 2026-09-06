@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "generated_at": "2026-09-06T22:01:30Z",
+  "generated_at": "2026-09-06T23:19:21Z",
   "source_fingerprint": "8880302fa424689b39e35031505ece2a13dbf1437775644e9722e63a14c0baf3",
   "records": {
     "abramsky-zvesper-2010-lawvere-bk": {
@@ -65,7 +65,7 @@
         "url": "http://arxiv.org/licenses/nonexclusive-distrib/1.0/"
       },
       "related_dois": [],
-      "status": "AUTOMATED_CLEAR",
+      "status": "NO_AUTOMATED_FOLLOWUP",
       "notes": ""
     },
     "atlas-ref-cohen-sharir-shashua-2016": {
@@ -260,7 +260,7 @@
         "url": "http://creativecommons.org/licenses/by/4.0/"
       },
       "related_dois": [],
-      "status": "AUTOMATED_CLEAR",
+      "status": "NO_AUTOMATED_FOLLOWUP",
       "notes": ""
     },
     "atlas-ref-melo-2024": {
@@ -325,7 +325,7 @@
         "url": "http://arxiv.org/licenses/nonexclusive-distrib/1.0/"
       },
       "related_dois": [],
-      "status": "AUTOMATED_CLEAR",
+      "status": "NO_AUTOMATED_FOLLOWUP",
       "notes": ""
     },
     "atlas-ref-parent-benzmueller-condnorm": {
@@ -584,7 +584,7 @@
         "details": "Crossref rights metadata (tdm)",
         "url": "http://www.springer.com/tdm"
       },
-      "status": "AUTOMATED_CLEAR",
+      "status": "NO_AUTOMATED_FOLLOWUP",
       "notes": "",
       "related_dois": []
     },
@@ -779,7 +779,7 @@
         "details": "Crossref rights metadata (vor)",
         "url": "https://www.acm.org/publications/policies/copyright_policy#Background"
       },
-      "status": "AUTOMATED_CLEAR",
+      "status": "NO_AUTOMATED_FOLLOWUP",
       "notes": "",
       "related_dois": []
     },
@@ -910,7 +910,7 @@
         "url": "http://creativecommons.org/licenses/by/4.0/"
       },
       "related_dois": [],
-      "status": "AUTOMATED_CLEAR",
+      "status": "NO_AUTOMATED_FOLLOWUP",
       "notes": ""
     },
     "droste-jansen-wegener-2002": {
@@ -974,7 +974,7 @@
         "details": "Crossref rights metadata (tdm)",
         "url": "https://www.elsevier.com/tdm/userlicense/1.0/"
       },
-      "status": "AUTOMATED_CLEAR",
+      "status": "NO_AUTOMATED_FOLLOWUP",
       "notes": "",
       "related_dois": []
     },
@@ -1170,7 +1170,7 @@
         "url": "http://arxiv.org/licenses/assumed-1991-2003/"
       },
       "related_dois": [],
-      "status": "AUTOMATED_CLEAR",
+      "status": "NO_AUTOMATED_FOLLOWUP",
       "notes": ""
     },
     "igel-toussaint-2004": {
@@ -1234,7 +1234,7 @@
         "details": "Crossref rights metadata (tdm)",
         "url": "https://www.springernature.com/gp/researchers/text-and-data-mining"
       },
-      "status": "AUTOMATED_CLEAR",
+      "status": "NO_AUTOMATED_FOLLOWUP",
       "notes": "",
       "related_dois": []
     },
@@ -2469,7 +2469,7 @@
         "details": "Crossref rights metadata (tdm)",
         "url": "http://doi.wiley.com/10.1002/tdm_license_1.1"
       },
-      "status": "AUTOMATED_CLEAR",
+      "status": "NO_AUTOMATED_FOLLOWUP",
       "notes": "",
       "related_dois": []
     },
@@ -2534,7 +2534,7 @@
         "details": "Crossref rights metadata (tdm)",
         "url": "https://www.elsevier.com/tdm/userlicense/1.0/"
       },
-      "status": "AUTOMATED_CLEAR",
+      "status": "NO_AUTOMATED_FOLLOWUP",
       "notes": "",
       "related_dois": []
     },
@@ -2729,7 +2729,7 @@
         "details": "Crossref rights metadata (vor)",
         "url": "https://ieeexplore.ieee.org/Xplorehelp/downloads/license-information/IEEE.html"
       },
-      "status": "AUTOMATED_CLEAR",
+      "status": "NO_AUTOMATED_FOLLOWUP",
       "notes": "",
       "related_dois": []
     },
@@ -2794,7 +2794,7 @@
         "details": "Crossref rights metadata (vor)",
         "url": "https://ieeexplore.ieee.org/Xplorehelp/downloads/license-information/IEEE.html"
       },
-      "status": "AUTOMATED_CLEAR",
+      "status": "NO_AUTOMATED_FOLLOWUP",
       "notes": "",
       "related_dois": []
     },
@@ -3189,7 +3189,7 @@
         "details": "Crossref rights metadata (tdm)",
         "url": "https://www.elsevier.com/tdm/userlicense/1.0/"
       },
-      "status": "AUTOMATED_CLEAR",
+      "status": "NO_AUTOMATED_FOLLOWUP",
       "notes": "",
       "related_dois": []
     },
@@ -3645,7 +3645,7 @@
         "url": "http://arxiv.org/licenses/nonexclusive-distrib/1.0/"
       },
       "related_dois": [],
-      "status": "AUTOMATED_CLEAR",
+      "status": "NO_AUTOMATED_FOLLOWUP",
       "notes": ""
     },
     "survey-ref-035": {
@@ -4294,7 +4294,7 @@
         "details": "Crossref rights metadata (vor)",
         "url": "https://www.acm.org/publications/policies/copyright_policy#Background"
       },
-      "status": "AUTOMATED_CLEAR",
+      "status": "NO_AUTOMATED_FOLLOWUP",
       "notes": "",
       "related_dois": []
     },
@@ -4424,7 +4424,7 @@
         "details": "Crossref rights metadata (vor)",
         "url": "http://onlinelibrary.wiley.com/termsAndConditions#vor"
       },
-      "status": "AUTOMATED_CLEAR",
+      "status": "NO_AUTOMATED_FOLLOWUP",
       "notes": "",
       "related_dois": []
     },
@@ -4489,7 +4489,7 @@
         "details": "Crossref rights metadata (tdm)",
         "url": "http://www.springer.com/tdm"
       },
-      "status": "AUTOMATED_CLEAR",
+      "status": "NO_AUTOMATED_FOLLOWUP",
       "notes": "",
       "related_dois": []
     },
@@ -4554,7 +4554,7 @@
         "details": "Crossref rights metadata (vor)",
         "url": "https://ieeexplore.ieee.org/Xplorehelp/downloads/license-information/IEEE.html"
       },
-      "status": "AUTOMATED_CLEAR",
+      "status": "NO_AUTOMATED_FOLLOWUP",
       "notes": "",
       "related_dois": []
     },
@@ -5464,7 +5464,7 @@
         "details": "Crossref rights metadata (unspecified)",
         "url": "https://www.cambridge.org/core/terms"
       },
-      "status": "AUTOMATED_CLEAR",
+      "status": "NO_AUTOMATED_FOLLOWUP",
       "notes": "",
       "related_dois": []
     },
@@ -5724,7 +5724,7 @@
         "details": "Crossref rights metadata (vor)",
         "url": "https://www.acm.org/publications/policies/copyright_policy#Background"
       },
-      "status": "AUTOMATED_CLEAR",
+      "status": "NO_AUTOMATED_FOLLOWUP",
       "notes": "",
       "related_dois": []
     },
@@ -5854,7 +5854,7 @@
         "details": "Crossref rights metadata (vor)",
         "url": "https://publishingsupport.iopscience.iop.org/iop-standard/v1"
       },
-      "status": "AUTOMATED_CLEAR",
+      "status": "NO_AUTOMATED_FOLLOWUP",
       "notes": "",
       "related_dois": []
     },
@@ -6114,7 +6114,7 @@
         "details": "Crossref rights metadata (unspecified)",
         "url": "http://www.springer.com/tdm"
       },
-      "status": "AUTOMATED_CLEAR",
+      "status": "NO_AUTOMATED_FOLLOWUP",
       "notes": "",
       "related_dois": []
     },
@@ -6309,7 +6309,7 @@
         "details": "Crossref rights metadata (tdm)",
         "url": "http://doi.wiley.com/10.1002/tdm_license_1"
       },
-      "status": "AUTOMATED_CLEAR",
+      "status": "NO_AUTOMATED_FOLLOWUP",
       "notes": "",
       "related_dois": []
     },
@@ -6374,7 +6374,7 @@
         "details": "Crossref rights metadata (tdm)",
         "url": "https://www.elsevier.com/tdm/userlicense/1.0/"
       },
-      "status": "AUTOMATED_CLEAR",
+      "status": "NO_AUTOMATED_FOLLOWUP",
       "notes": "",
       "related_dois": []
     },
@@ -6440,7 +6440,7 @@
         "url": "http://arxiv.org/licenses/nonexclusive-distrib/1.0/"
       },
       "related_dois": [],
-      "status": "AUTOMATED_CLEAR",
+      "status": "NO_AUTOMATED_FOLLOWUP",
       "notes": ""
     },
     "survey-ref-078": {
@@ -6769,7 +6769,7 @@
         "details": "Crossref rights metadata (unspecified)",
         "url": "https://www.cambridge.org/core/terms"
       },
-      "status": "AUTOMATED_CLEAR",
+      "status": "NO_AUTOMATED_FOLLOWUP",
       "notes": "",
       "related_dois": []
     }

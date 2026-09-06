@@ -161,7 +161,7 @@ def test_review_board_shows_machine_findings_not_a_manual_unreviewed_queue() -> 
     assert "## Potential metadata differences" in report
     assert (
         "| Source | Cited material | Field | Atlas citation value | "
-        "Retrieved-record value | Lookup record |"
+        "Retrieved-record value | Lookup record | Human disposition |"
     ) in report
     assert "| [open](<" in report
     assert f"| [`{source_id}`](source-catalog.md#{source_id}) |" in report
@@ -273,9 +273,16 @@ def test_source_catalog_renders_cited_in_atlas_links() -> None:
     }
     review = {
         "records": {
-            "src-a": {"status": "AUTOMATED_CLEAR"},
-            "src-b": {"status": "AUTOMATED_CLEAR"},
+            "src-a": {"status": "NO_AUTOMATED_FOLLOWUP"},
+            "src-b": {"status": "NO_AUTOMATED_FOLLOWUP"},
         }
     }
     catalog = views.render_source_catalog(registry, review, {"conjectures": []})
     assert "- **Cited in Atlas:** [`ST-1`](../formalization-status.md) (*Statement 1*)" in catalog
+
+
+if __name__ == "__main__":
+    for name, func in list(globals().items()):
+        if name.startswith("test_") and callable(func):
+            func()
+            print(f"ok {name}")

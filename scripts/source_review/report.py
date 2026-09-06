@@ -70,10 +70,30 @@ def _arxiv_methods_links(record: dict, source: dict) -> str:
     return " · ".join(links) if links else _checked_record_link(record)
 
 
+def _disposition_cell(
+    source_id: str,
+    finding_id: str,
+    dispositions: dict | None,
+) -> tuple[int, str]:
+    """Return (sort_order, cell_markdown) where 0=pending (sorts first), 1=reviewed."""
+    if not dispositions:
+        return (0, "⏳ Pending review")
+    source_disps = dispositions.get("dispositions", {}).get(source_id, {})
+    disp = source_disps.get(finding_id)
+    if disp and disp.get("status") == "REVIEWED_NO_CHANGE":
+        reason = _md_cell(disp.get("reason", ""))
+        reviewer = _md_cell(disp.get("reviewed_by", ""))
+        date = _md_cell(disp.get("reviewed_on", ""))
+        return (1, f"✅ **Reviewed (no change)**: *{reason}* (@{reviewer}, {date})")
+    return (0, "⏳ Pending review")
+
+
+
 def _metadata_finding_rows(
     work_sources: list[tuple[str, dict]],
     records: dict,
     outcomes: set[str],
+    dispositions: dict | None = None,
     anchor_prefix: str = "",
 ) -> list[str]:
     """Show one named class of machine comparison, with both values visible."""
@@ -87,7 +107,7 @@ def _metadata_finding_rows(
         "pages": 6,
         "locator": 7,
     }
-    rows: list[tuple[int, str, str]] = []
+    rows: list[tuple[int, int, str, str]] = []
     for source_id, source in work_sources:
         record = records.get(source_id)
         if not record or record["lookup_status"] != "OK":
@@ -98,17 +118,21 @@ def _metadata_finding_rows(
                 continue
             fld = comparison["field"]
             anchor_id = f"{anchor_prefix}{source_id}-{fld}" if anchor_prefix else ""
+            disp_order, disp_text = _disposition_cell(
+                source_id, f"metadata:{fld}", dispositions
+            )
             rows.append(
                 (
+                    disp_order,
                     field_order[fld],
                     source_id,
                     f"| {_source_catalog_link(source_id, anchor_id)} | {_source_locator_link(source)} | "
                     f"`{fld}` | "
                     f"{_md_cell(comparison['catalogue_value'])} | "
-                    f"{_md_cell(comparison['source_value'])} | {checked_record} |",
+                    f"{_md_cell(comparison['source_value'])} | {checked_record} | {disp_text} |",
                 )
             )
-    return [row for _, _, row in sorted(rows)]
+    return [row for _, _, _, row in sorted(rows)]
 
 
 def _metadata_source_ids(
@@ -244,9 +268,11 @@ def _rights_recorded_rows(
 
 
 def _no_rights_rows(
-    work_sources: list[tuple[str, dict]], records: dict
+    work_sources: list[tuple[str, dict]],
+    records: dict,
+    dispositions: dict | None = None,
 ) -> list[str]:
-    rows: list[tuple[str, str, str]] = []
+    rows: list[tuple[int, str, str, str]] = []
     for source_id, source in work_sources:
         record = records.get(source_id)
         if (
@@ -259,22 +285,26 @@ def _no_rights_rows(
             checked_record = _arxiv_methods_links(record, source)
         else:
             checked_record = _checked_record_link(record)
+        disp_order, disp_text = _disposition_cell(source_id, "rights", dispositions)
         rows.append(
             (
+                disp_order,
                 record.get("provider", ""),
                 source_id,
                 f"| {_source_catalog_link(source_id, f'rights-{source_id}')} | {_source_locator_link(source)} | "
-                f"{checked_record} |",
+                f"{checked_record} | {disp_text} |",
             )
         )
-    return [row for _, _, row in sorted(rows)]
+    return [row for _, _, _, row in sorted(rows)]
 
 
 def _related_doi_rows(
-    work_sources: list[tuple[str, dict]], records: dict
+    work_sources: list[tuple[str, dict]],
+    records: dict,
+    dispositions: dict | None = None,
 ) -> list[str]:
     """Surface an arXiv DOI without replacing the cited preprint identifier."""
-    rows: list[tuple[str, str, str]] = []
+    rows: list[tuple[int, str, str, str]] = []
     for source_id, source in work_sources:
         record = records.get(source_id)
         if not record or record.get("lookup_status") != "OK":
@@ -283,21 +313,29 @@ def _related_doi_rows(
             doi = related["doi"]
             crossref_url = f"https://api.crossref.org/v1/works/{quote(doi, safe='')}"
             lookup_methods = f"{_checked_record_link(record)} · [Crossref]({crossref_url})"
+            disp_order, disp_text = _disposition_cell(
+                source_id, f"related_doi:{doi.lower()}", dispositions
+            )
             rows.append(
                 (
+                    disp_order,
                     source_id,
                     doi,
                     f"| {_source_catalog_link(source_id, f'version-{source_id}')} | {_source_locator_link(source)} | "
                     f"[doi:{_md_cell(doi)}]({related['url']}) | "
-                    f"{lookup_methods} |",
+                    f"{lookup_methods} | {disp_text} |",
                 )
             )
-    return [row for _, _, row in sorted(rows)]
+    return [row for _, _, _, row in sorted(rows)]
 
 
-def _lookup_rows(work_sources: list[tuple[str, dict]], records: dict) -> list[str]:
+def _lookup_rows(
+    work_sources: list[tuple[str, dict]],
+    records: dict,
+    dispositions: dict | None = None,
+) -> list[str]:
     status_order = {"MISSING_LOCATOR": 0, "HTTP_ERROR": 1, "PARSE_ERROR": 2}
-    rows: list[tuple[int, str, str]] = []
+    rows: list[tuple[int, int, str, str]] = []
     for source_id, source in work_sources:
         record = records.get(source_id)
         if not record or record["lookup_status"] == "OK":
@@ -318,22 +356,26 @@ def _lookup_rows(work_sources: list[tuple[str, dict]], records: dict) -> list[st
                 links.append(f"[Source page](<{quote(locator, safe=':/?&=#%')}>)")
             if links:
                 extra_note += f" ({' · '.join(links)})"
+        disp_order, disp_text = _disposition_cell(source_id, "lookup", dispositions)
         rows.append(
             (
+                disp_order,
                 status_order.get(record["lookup_status"], 99),
                 source_id,
                 _work_source_row(
                     source_id,
                     source,
-                    f"`{record['lookup_status']}` · {extra_note}",
+                    f"`{record['lookup_status']}` · {extra_note} | {disp_text}",
                     anchor_id=f"gap-{source_id}",
                 ),
             )
         )
-    return [row for _, _, row in sorted(rows)]
+    return [row for _, _, _, row in sorted(rows)]
 
 
-def render_source_review(registry: dict, review: dict) -> str:
+def render_source_review(
+    registry: dict, review: dict, dispositions: dict | None = None
+) -> str:
     """Render a complete source screen sorted by the follow-up it suggests."""
     work_sources = _work_sources(registry)
     records = review["records"]
@@ -362,49 +404,39 @@ def render_source_review(registry: dict, review: dict) -> str:
     catalogue_gaps = {"MISSING_IN_CATALOGUE"}
     source_omissions = {"MISSING_IN_SOURCE"}
     difference_rows = _metadata_finding_rows(
-        work_sources, records, differences, anchor_prefix="diff-"
+        work_sources, records, differences, dispositions=dispositions, anchor_prefix="diff-"
     )
     catalogue_gap_rows = _metadata_finding_rows(
-        work_sources, records, catalogue_gaps, anchor_prefix="missing-cat-"
+        work_sources, records, catalogue_gaps, dispositions=dispositions, anchor_prefix="missing-cat-"
     )
     source_omission_rows = _metadata_finding_rows(
-        work_sources, records, source_omissions, anchor_prefix="missing-src-"
+        work_sources, records, source_omissions, dispositions=dispositions, anchor_prefix="missing-src-"
     )
-    difference_sources = _metadata_source_ids(work_sources, records, differences)
-    catalogue_gap_sources = _metadata_source_ids(work_sources, records, catalogue_gaps)
-    source_omission_sources = _metadata_source_ids(work_sources, records, source_omissions)
     rights_recorded_rows = _rights_recorded_rows(work_sources, records)
-    no_rights_rows = _no_rights_rows(work_sources, records)
-    related_doi_rows = _related_doi_rows(work_sources, records)
-    lookup_rows = _lookup_rows(work_sources, records)
-    related_doi_sources = {
-        source_id
-        for source_id, _ in work_sources
-        if (record := records.get(source_id))
-        and record.get("lookup_status") == "OK"
-        and record.get("related_dois")
-    }
-    rights_recorded_sources = {
-        source_id
-        for source_id, _ in work_sources
-        if (record := records.get(source_id))
-        and record["lookup_status"] == "OK"
-        and record["rights"]["outcome"] == "RIGHTS_RECORDED"
-    }
-    no_rights_sources = {
-        source_id
-        for source_id, _ in work_sources
-        if (record := records.get(source_id))
-        and record["lookup_status"] == "OK"
-        and record["rights"]["outcome"] != "RIGHTS_RECORDED"
-    }
+    no_rights_rows = _no_rights_rows(work_sources, records, dispositions=dispositions)
+    related_doi_rows = _related_doi_rows(work_sources, records, dispositions=dispositions)
+    lookup_rows = _lookup_rows(work_sources, records, dispositions=dispositions)
+
+    def _counts(rows: list[str]) -> tuple[int, int, int]:
+        total = len(rows)
+        pending = sum(1 for r in rows if "⏳ Pending review" in r)
+        reviewed = total - pending
+        return total, pending, reviewed
+
+    doi_tot, doi_pend, doi_rev = _counts(related_doi_rows)
+    lookup_tot, lookup_pend, lookup_rev = _counts(lookup_rows)
+    diff_tot, diff_pend, diff_rev = _counts(difference_rows)
+    gap_tot, gap_pend, gap_rev = _counts(catalogue_gap_rows)
+    no_rights_tot, no_rights_pend, no_rights_rev = _counts(no_rights_rows)
+    omiss_tot, omiss_pend, omiss_rev = _counts(source_omission_rows)
+
     clear_rows = [
         (
             f"| {_source_catalog_link(source_id, f'clear-{source_id}')} | {_source_locator_link(source)} | "
             f"{_arxiv_methods_links(record, source) if record.get('provider') == 'arxiv' else _checked_record_link(record)} |"
         )
         for source_id, source in work_sources
-        if (record := records.get(source_id, {})).get("status") == "AUTOMATED_CLEAR"
+        if (record := records.get(source_id, {})).get("status") in {"NO_AUTOMATED_FOLLOWUP", "AUTOMATED_CLEAR"}
     ]
     lines = [
         "<!-- Generated by scripts/generate_registry_views.py; do not edit directly. -->",
@@ -425,16 +457,16 @@ def render_source_review(registry: dict, review: dict) -> str:
         "",
         "## At a glance",
         "",
-        "| Check | Result | Sources | Meaning |",
-        "|---|---|---:|---|",
-        f"| Version | arXiv-associated DOI | {len(related_doi_sources)} | Confirm whether the cited preprint is intentional. |",
-        f"| Retrieval | Locator or lookup gap | {len(lookup_rows)} | No metadata or rights result could be obtained. |",
-        f"| Metadata | Potential difference | {len(difference_sources)} | Compare the two values below. |",
-        f"| Metadata | Atlas citation incomplete | {len(catalogue_gap_sources)} | The queried record exposes a value the atlas citation does not. |",
-        f"| Rights / license | Rights or license signal found | {len(rights_recorded_sources)} | The public record exposed a license, publisher terms, or TDM link; it is not a reuse decision. |",
-        f"| Rights / license | No machine-readable signal | {len(no_rights_sources)} | Neither the queried metadata record nor page exposed an explicit signal. |",
-        f"| Metadata | Source field not exposed | {len(source_omission_sources)} | The queried record does not provide a comparable value. |",
-        f"| Automated comparison | No automated follow-up | {len(clear_rows)} | All comparable citation values agree and a rights-related link was found; this is not permission to reuse. |",
+        "| Check | Result | Total | Pending review | Reviewed (no change) | Meaning |",
+        "|---|---|---:|---:|---:|---|",
+        f"| Version | arXiv-associated DOI | {doi_tot} | {doi_pend} | {doi_rev} | Confirm whether the cited preprint is intentional. |",
+        f"| Retrieval | Locator or lookup gap | {lookup_tot} | {lookup_pend} | {lookup_rev} | No metadata or rights result could be obtained. |",
+        f"| Metadata | Potential difference | {diff_tot} | {diff_pend} | {diff_rev} | Compare the two values below. |",
+        f"| Metadata | Atlas citation incomplete | {gap_tot} | {gap_pend} | {gap_rev} | The queried record exposes a value the atlas citation does not. |",
+        f"| Rights / license | Rights or license signal found | {len(rights_recorded_rows)} | — | — | The public record exposed a license, publisher terms, or TDM link; it is not a reuse decision. |",
+        f"| Rights / license | No machine-readable signal | {no_rights_tot} | {no_rights_pend} | {no_rights_rev} | Neither the queried metadata record nor page exposed an explicit signal. |",
+        f"| Metadata | Source field not exposed | {omiss_tot} | {omiss_pend} | {omiss_rev} | The queried record does not provide a comparable value. |",
+        f"| Automated comparison | No automated follow-up | {len(clear_rows)} | — | — | All comparable citation values agree and a rights-related link was found; this is not permission to reuse. |",
         "",
         "## Legend: Data retrieval methods",
         "",
@@ -453,35 +485,35 @@ def render_source_review(registry: dict, review: dict) -> str:
         "published version, so a person should decide whether the atlas deliberately cites the",
         "preprint or should cite that version instead.",
         "",
-        "| Source | Cited material | DOI reported by arXiv | Lookup record |",
-        "|---|---|---|---|",
+        "| Source | Cited material | DOI reported by arXiv | Lookup record | Human disposition |",
+        "|---|---|---|---|---|",
         *(
             related_doi_rows
             or [
-                "| — | — | — | arXiv did not report an associated DOI for a retrieved preprint. |"
+                "| — | — | — | arXiv did not report an associated DOI for a retrieved preprint. | — |"
             ]
         ),
         "",
         "## Retrieval and locator gaps",
         "",
-        "| Source | Citation | Cited material | Finding |",
-        "|---|---|---|---|",
+        "| Source | Citation | Cited material | Finding | Human disposition |",
+        "|---|---|---|---|---|",
         *(
             lookup_rows
-            or ["| — | — | Every work record was retrieved and parsed. | — |"]
+            or ["| — | — | Every work record was retrieved and parsed. | — | — |"]
         ),
         "",
         "## Potential metadata differences",
         "",
-        "| Source | Cited material | Field | Atlas citation value | Retrieved-record value | Lookup record |",
-        "|---|---|---|---|---|---|",
-        *(difference_rows or ["| — | — | — | No potential metadata differences. | — | — |"]),
+        "| Source | Cited material | Field | Atlas citation value | Retrieved-record value | Lookup record | Human disposition |",
+        "|---|---|---|---|---|---|---|",
+        *(difference_rows or ["| — | — | — | No potential metadata differences. | — | — | — |"]),
         "",
         "## Values missing from the atlas citation",
         "",
-        "| Source | Cited material | Field | Atlas citation value | Retrieved-record value | Lookup record |",
-        "|---|---|---|---|---|---|",
-        *(catalogue_gap_rows or ["| — | — | — | No additional values were exposed. | — | — |"]),
+        "| Source | Cited material | Field | Atlas citation value | Retrieved-record value | Lookup record | Human disposition |",
+        "|---|---|---|---|---|---|---|",
+        *(catalogue_gap_rows or ["| — | — | — | No additional values were exposed. | — | — | — |"]),
         "",
         "## Rights and license metadata",
         "",
@@ -501,11 +533,11 @@ def render_source_review(registry: dict, review: dict) -> str:
         "This does **not** mean that a work has no rights or license; it means the queried",
         " metadata record or standardized page metadata did not expose one.",
         "",
-        "| Source | Cited material | Lookup record |",
-        "|---|---|---|",
+        "| Source | Cited material | Lookup record | Human disposition |",
+        "|---|---|---|---|",
         *(
             no_rights_rows
-            or ["| — | — | Every retrieved record exposed a rights-related link. |"]
+            or ["| — | — | Every retrieved record exposed a rights-related link. | — |"]
         ),
         "",
         f"The **{len(lookup_rows)}** sources whose records could not be retrieved or have no "
@@ -513,12 +545,12 @@ def render_source_review(registry: dict, review: dict) -> str:
         "",
         "## Fields not exposed by the retrieved record",
         "",
-        "| Source | Cited material | Field | Atlas citation value | Retrieved-record value | Lookup record |",
-        "|---|---|---|---|---|---|",
+        "| Source | Cited material | Field | Atlas citation value | Retrieved-record value | Lookup record | Human disposition |",
+        "|---|---|---|---|---|---|---|",
         *(
             source_omission_rows
             or [
-                "| — | — | — | Every retrieved record exposed its comparable fields. | — | — |"
+                "| — | — | — | Every retrieved record exposed its comparable fields. | — | — | — |"
             ]
         ),
         "",

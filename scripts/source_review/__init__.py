@@ -18,12 +18,15 @@ from .metadata import (
 )
 from .report import render_source_review
 from .schema import (
+    NO_AUTOMATED_FOLLOWUP,
     SCHEMA_VERSION,
+    actionable_findings,
     author_match,
     catalogue_fingerprint,
     catalogue_fields,
     citation_pages,
     classify,
+    compute_finding_fingerprint,
     extract_doi,
     extract_title,
     input_fingerprint,
@@ -40,7 +43,9 @@ from .snapshot import (
 
 __all__ = [
     "HostRateLimiter",
+    "NO_AUTOMATED_FOLLOWUP",
     "SCHEMA_VERSION",
+    "actionable_findings",
     "arxiv_api_url",
     "arxiv_metadata",
     "arxiv_rights",
@@ -51,6 +56,7 @@ __all__ = [
     "catalogue_fingerprint",
     "citation_pages",
     "classify",
+    "compute_finding_fingerprint",
     "crossref_external",
     "crossref_url",
     "evaluate_source",

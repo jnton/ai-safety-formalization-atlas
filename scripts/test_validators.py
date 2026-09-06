@@ -32,6 +32,7 @@ DATA = [
     "tasks.yaml",
     "docs/provenance/formalization-search.json",
     "docs/provenance/source-review.json",
+    "docs/provenance/source-review-dispositions.json",
 ]
 EXTRA = [
     "AISafetyAtlas.lean",
@@ -59,6 +60,11 @@ def build_tree(tmp: Path) -> Path:
         shutil.copy2(ROOT / name, tmp / name)
     for name in SCRIPTS:
         shutil.copy2(ROOT / "scripts" / name, tmp / "scripts" / name)
+    shutil.copytree(
+        ROOT / "scripts/source_review",
+        tmp / "scripts/source_review",
+        dirs_exist_ok=True,
+    )
     # Registry validation checks that every recorded reproduction command
     # names an executable script, so the copies must carry them too.
     for script in sorted(ROOT.glob("scripts/reproduce_*.sh")):
@@ -221,7 +227,7 @@ CASES = [
         "validate_source_review.py",
         "docs/provenance/source-review.json",
         lambda d: d["records"]["survey-ref-018"].update(
-            {"lookup_status": "HTTP_ERROR", "status": "AUTOMATED_CLEAR"}
+            {"lookup_status": "HTTP_ERROR", "status": "NO_AUTOMATED_FOLLOWUP"}
         ),
         "status does not match its recorded outcomes",
     ),
@@ -240,6 +246,85 @@ CASES = [
             ],
         ),
         "related DOI 0 must contain exactly",
+    ),
+    (
+        "source review dispositions: schema version must be 1",
+        "validate_source_review.py",
+        "docs/provenance/source-review-dispositions.json",
+        lambda d: d.update({"schema_version": 99}),
+        "must use schema_version 1",
+    ),
+    (
+        "source review dispositions: reject unknown work source",
+        "validate_source_review.py",
+        "docs/provenance/source-review-dispositions.json",
+        lambda d: d["dispositions"].__setitem__(
+            "nonexistent-src",
+            {
+                "rights": {
+                    "status": "REVIEWED_NO_CHANGE",
+                    "reason": "Verified manually",
+                    "reviewed_by": "human-reviewer",
+                    "reviewed_on": "2026-09-01",
+                    "finding_fingerprint": "0" * 64,
+                }
+            },
+        ),
+        "names unknown work source",
+    ),
+    (
+        "source review dispositions: reject nonexistent or inactive finding",
+        "validate_source_review.py",
+        "docs/provenance/source-review-dispositions.json",
+        lambda d: d["dispositions"].__setitem__(
+            "survey-ref-018",
+            {
+                "nonexistent:finding": {
+                    "status": "REVIEWED_NO_CHANGE",
+                    "reason": "Verified manually",
+                    "reviewed_by": "human-reviewer",
+                    "reviewed_on": "2026-09-01",
+                    "finding_fingerprint": "0" * 64,
+                }
+            },
+        ),
+        "disposition for nonexistent or inactive finding",
+    ),
+    (
+        "source review dispositions: stale finding fingerprint rejected",
+        "validate_source_review.py",
+        "docs/provenance/source-review-dispositions.json",
+        lambda d: d["dispositions"].__setitem__(
+            "survey-ref-018",
+            {
+                "rights": {
+                    "status": "REVIEWED_NO_CHANGE",
+                    "reason": "Verified manually",
+                    "reviewed_by": "human-reviewer",
+                    "reviewed_on": "2026-09-01",
+                    "finding_fingerprint": "0" * 64,
+                }
+            },
+        ),
+        "disposition fingerprint is stale",
+    ),
+    (
+        "source review dispositions: reviewed_by must be a non-empty identity",
+        "validate_source_review.py",
+        "docs/provenance/source-review-dispositions.json",
+        lambda d: d["dispositions"].__setitem__(
+            "survey-ref-018",
+            {
+                "rights": {
+                    "status": "REVIEWED_NO_CHANGE",
+                    "reason": "Verified manually",
+                    "reviewed_by": "   ",
+                    "reviewed_on": "2026-09-01",
+                    "finding_fingerprint": "c4504e2dbbcefb1be0d8d0866253bd99abe57bee8c22fd92d735b557f2d22d79",
+                }
+            },
+        ),
+        "reviewed_by",
     ),
     (
         "registry: graded row citing only a directory source",

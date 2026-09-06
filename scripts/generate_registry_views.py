@@ -22,6 +22,7 @@ CONJECTURES = ROOT / "conjectures.yaml"
 TASKS = ROOT / "tasks.yaml"
 SEARCH_EVIDENCE = ROOT / "docs/provenance/formalization-search.json"
 SOURCE_REVIEW = ROOT / "docs/provenance/source-review.json"
+SOURCE_REVIEW_DISPOSITIONS = ROOT / "docs/provenance/source-review-dispositions.json"
 STATUS = ROOT / "docs/status/formalization-status.md"
 BY_AREA = ROOT / "docs/status/by-area.md"
 CONTRIBUTOR_TASKS = ROOT / "docs/guide/contributor-tasks.md"
@@ -1640,6 +1641,9 @@ def main() -> None:
     tasks = json.loads(TASKS.read_text(encoding="utf-8"))
     search_evidence = json.loads(SEARCH_EVIDENCE.read_text(encoding="utf-8"))
     source_review = json.loads(SOURCE_REVIEW.read_text(encoding="utf-8"))
+    source_review_dispositions = json.loads(
+        SOURCE_REVIEW_DISPOSITIONS.read_text(encoding="utf-8")
+    )
     readme = README.read_text(encoding="utf-8")
     state = STATE.read_text(encoding="utf-8")
     site = SITE_PAGE.read_text(encoding="utf-8")
@@ -1671,7 +1675,11 @@ def main() -> None:
         args.check,
     )
     stale |= update(
-        SOURCE_REVIEW_REPORT, render_source_review(registry, source_review), args.check
+        SOURCE_REVIEW_REPORT,
+        render_source_review(
+            registry, source_review, source_review_dispositions
+        ),
+        args.check,
     )
     # The source index discovers report files from this directory. Generate
     # reports first so a newly added report is listed in the same run rather

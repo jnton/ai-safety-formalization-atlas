@@ -68,6 +68,14 @@ def _run_validator(tmp_path: Path, review: dict) -> subprocess.CompletedProcess[
         ROOT / "scripts/validate_source_review.py",
         tmp_path / "scripts/validate_source_review.py",
     )
+    shutil.copytree(
+        ROOT / "scripts/source_review",
+        tmp_path / "scripts/source_review",
+    )
+    shutil.copy2(
+        ROOT / "docs/provenance/source-review-dispositions.json",
+        tmp_path / "docs/provenance/source-review-dispositions.json",
+    )
     (tmp_path / REVIEW).write_text(
         json.dumps(review, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
