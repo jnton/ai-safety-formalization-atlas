@@ -24,6 +24,7 @@ own that a statement-match grade can be related to.
 ## Per-source coverage reports
 
 - [`brcic-yampolskiy-2023.md`](brcic-yampolskiy-2023.md)
+- [`source-review.md`](source-review.md)
 
 
 A source without a report is one nothing has been drawn from yet. That is a

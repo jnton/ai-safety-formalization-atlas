@@ -15,6 +15,7 @@ from .metadata import (
     crossref_external,
     html_external,
 )
+from .report import render_source_review
 from .schema import (
     SCHEMA_VERSION,
     author_match,
@@ -60,6 +61,7 @@ __all__ = [
     "input_fingerprint",
     "metadata_comparisons",
     "reclassify_record",
+    "render_source_review",
     "source_catalogue",
     "successful_record",
     "venue_match",
