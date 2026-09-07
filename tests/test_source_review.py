@@ -12,6 +12,8 @@ import subprocess
 import sys
 from types import SimpleNamespace
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[1]
 REVIEW = "docs/provenance/source-review.json"
@@ -681,13 +683,16 @@ def test_fetch_succeeds_on_mocked_public_destination(monkeypatch) -> None:
 
 def test_refresh_aborts_on_unsafe_locator_without_writing_snapshot(monkeypatch, tmp_path: Path) -> None:
     from source_review.lookups import UnsafeURLError
-    from source_review.snapshot import build_snapshot
+    from source_review.snapshot import load_cached_records as real_load_cached_records
+    _refresh_module()
+    import refresh_source_review
     import pytest
 
     snapshot_path = tmp_path / "source-review.json"
-    initial_content = '{"schema_version": 3, "records": {"existing": {}}}'
+    initial_content = '{"schema_version": 3, "records": {"existing": {}}}\n'
     snapshot_path.write_text(initial_content, encoding="utf-8")
 
+    registry_path = tmp_path / "registry.yaml"
     registry = {
         "source_catalog": {
             "src-unsafe": {
@@ -697,21 +702,29 @@ def test_refresh_aborts_on_unsafe_locator_without_writing_snapshot(monkeypatch, 
             }
         }
     }
+    registry_path.write_text(json.dumps(registry), encoding="utf-8")
 
-    def mock_read_text(self, encoding="utf-8"):
-        if "registry.yaml" in str(self):
-            return json.dumps(registry)
-        if "source-review.json" in str(self):
-            return initial_content
-        return "{}"
-
-    # Verify no network request is made
+    # Verify any attempted network open fails the test
     def mock_network(*args, **kwargs):
         raise AssertionError("Network request was attempted for an unsafe locator!")
 
-    monkeypatch.setattr("pathlib.Path.read_text", mock_read_text)
     monkeypatch.setattr("urllib.request.urlopen", mock_network)
     monkeypatch.setattr("urllib.request.OpenerDirector.open", mock_network)
+
+    # Point registry and review to controlled test paths without touching real repo
+    monkeypatch.setattr("source_review.snapshot.REGISTRY", registry_path)
+    monkeypatch.setattr("source_review.snapshot.REVIEW", snapshot_path)
+    monkeypatch.setattr(
+        "source_review.snapshot.load_cached_records",
+        lambda path=snapshot_path: real_load_cached_records(path),
+    )
+
+    write_called = False
+    def sentinel_write_snapshot(snapshot, path=None):
+        nonlocal write_called
+        write_called = True
+
+    monkeypatch.setattr(refresh_source_review, "write_snapshot", sentinel_write_snapshot)
 
     args = argparse.Namespace(
         sources="src-unsafe",
@@ -722,25 +735,20 @@ def test_refresh_aborts_on_unsafe_locator_without_writing_snapshot(monkeypatch, 
         web_delay=0,
         max_age_days=30,
         timeout=10,
-        max_bytes=1000000,
+        max_bytes=1_000_000,
         retries=0,
         user_agent="test-agent",
         mailto=None,
     )
-
-    write_called = False
-    def mock_write(snapshot, path=None):
-        nonlocal write_called
-        write_called = True
-
-    monkeypatch.setattr("source_review.snapshot.write_snapshot", mock_write)
+    monkeypatch.setattr(refresh_source_review, "parse_args", lambda: args)
 
     with pytest.raises(UnsafeURLError):
-        build_snapshot(args)
+        refresh_source_review.main()
 
     assert not write_called
-    # The existing snapshot file must remain unchanged
+    # The existing snapshot file must remain genuinely unchanged via unmocked filesystem read
     assert snapshot_path.read_text(encoding="utf-8") == initial_content
+
 
 
 def test_pages_match_range_vs_single_page_is_possible_conflict() -> None:
@@ -802,6 +810,49 @@ def test_write_snapshot_is_atomic(tmp_path: Path) -> None:
     assert target_file.exists()
     assert json.loads(target_file.read_text(encoding="utf-8")) == snapshot
     assert not target_file.with_suffix(".tmp").exists()
+    assert list(tmp_path.glob(".*.tmp")) == []
+
+
+def test_write_snapshot_does_not_follow_predictable_symlink(tmp_path: Path) -> None:
+    refresh = _refresh_module()
+    target_file = tmp_path / "snapshot.json"
+    victim = tmp_path / "victim.txt"
+    victim.write_text("KEEP", encoding="utf-8")
+
+    # Create the old predictable snapshot.tmp as a symlink pointing to victim.txt
+    predictable_tmp = target_file.with_suffix(".tmp")
+    predictable_tmp.symlink_to(victim)
+
+    snapshot = {"schema_version": 3, "records": {"src-1": {"status": "OK"}}}
+    refresh.write_snapshot(snapshot, target_file)
+
+    # Assert victim.txt was not overwritten
+    assert victim.read_text(encoding="utf-8") == "KEEP"
+    # Assert destination file received the new snapshot
+    assert json.loads(target_file.read_text(encoding="utf-8")) == snapshot
+    # Assert the predictable symlink was neither used nor overwritten
+    assert predictable_tmp.is_symlink()
+    assert predictable_tmp.resolve() == victim.resolve()
+    assert list(tmp_path.glob(".*.tmp")) == []
+
+
+def test_write_snapshot_cleans_up_temporary_file_on_error(
+    tmp_path: Path, monkeypatch
+) -> None:
+    refresh = _refresh_module()
+    target_file = tmp_path / "snapshot.json"
+    snapshot = {"schema_version": 3, "records": {}}
+
+    def mock_replace(src, dst):
+        raise OSError("simulated atomic replacement failure")
+
+    monkeypatch.setattr("os.replace", mock_replace)
+    with pytest.raises(OSError, match="simulated atomic replacement failure"):
+        refresh.write_snapshot(snapshot, target_file)
+
+    assert not target_file.exists()
+    assert list(tmp_path.glob(".*.tmp")) == []
+
 
 
 def test_refresh_cli_rejects_sources_with_reclassify() -> None:

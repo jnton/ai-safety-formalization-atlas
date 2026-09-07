@@ -6,7 +6,9 @@ import argparse
 import copy
 from datetime import datetime, timedelta, timezone
 import json
+import os
 from pathlib import Path
+import tempfile
 from typing import Any
 
 from .lookups import HostRateLimiter, evaluate_source
@@ -197,7 +199,28 @@ def build_snapshot(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def write_snapshot(snapshot: dict[str, Any], path: Path = REVIEW) -> None:
-    temp_path = path.with_suffix(".tmp")
+    target = Path(path)
     payload = json.dumps(snapshot, indent=2, ensure_ascii=False) + "\n"
-    temp_path.write_text(payload, encoding="utf-8")
-    temp_path.replace(path)
+    parent = target.parent
+    parent.mkdir(parents=True, exist_ok=True)
+    temp_file = tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        dir=parent,
+        prefix=f".{target.name}.",
+        suffix=".tmp",
+        delete=False,
+    )
+    temp_path = Path(temp_file.name)
+    try:
+        temp_file.write(payload)
+        temp_file.flush()
+        temp_file.close()
+        os.replace(temp_path, target)
+    except BaseException:
+        try:
+            if not temp_file.closed:
+                temp_file.close()
+        finally:
+            temp_path.unlink(missing_ok=True)
+        raise
