@@ -13,11 +13,11 @@ if scripts not in sys.path:
     sys.path.insert(0, scripts)
 
 import generate_registry_views as views  # noqa: E402
-from source_review.schema import (  # noqa: E402
-    NO_AUTOMATED_FOLLOWUP,
+from source_review.findings import (  # noqa: E402
     actionable_findings,
     compute_finding_fingerprint,
 )
+from source_review.schema import NO_AUTOMATED_FOLLOWUP  # noqa: E402
 import validate_source_review as validator  # noqa: E402
 
 

@@ -16,17 +16,19 @@ from .metadata import (
     crossref_external,
     html_external,
 )
+from .findings import (
+    actionable_findings,
+    compute_finding_fingerprint,
+)
 from .report import render_source_review
 from .schema import (
     NO_AUTOMATED_FOLLOWUP,
     SCHEMA_VERSION,
-    actionable_findings,
     author_match,
     catalogue_fingerprint,
     catalogue_fields,
     citation_pages,
     classify,
-    compute_finding_fingerprint,
     extract_doi,
     extract_title,
     input_fingerprint,

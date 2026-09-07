@@ -19,7 +19,10 @@ REVIEW = ROOT / "docs/provenance/source-review.json"
 DISPOSITIONS = ROOT / "docs/provenance/source-review-dispositions.json"
 
 sys.path.insert(0, str(ROOT / "scripts"))
-from source_review.schema import actionable_findings, compute_finding_fingerprint  # noqa: E402
+from source_review.findings import (  # noqa: E402
+    actionable_findings,
+    compute_finding_fingerprint,
+)
 
 SCHEMA_VERSION = 3
 METADATA_FIELDS = (
