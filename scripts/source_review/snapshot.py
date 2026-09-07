@@ -10,15 +10,17 @@ from pathlib import Path
 from typing import Any
 
 from .lookups import HostRateLimiter, evaluate_source
+from .comparisons import (
+    classify,
+    metadata_comparisons,
+    unavailable_comparisons,
+)
 from .schema import (
     SCHEMA_VERSION,
     catalogue_fingerprint,
-    classify,
     input_fingerprint,
-    metadata_comparisons,
     source_arxiv_id,
     source_catalogue,
-    unavailable_comparisons,
     utc_now,
 )
 
@@ -148,6 +150,27 @@ def build_snapshot(args: argparse.Namespace) -> dict[str, Any]:
         if getattr(args, "sources", None)
         else None
     )
+    if target_sources is not None:
+        unknown = target_sources - set(sources.keys())
+        if unknown:
+            raise ValueError(
+                f"unknown source ID(s) passed to --sources: {', '.join(sorted(unknown))}"
+            )
+        stale_non_targets = [
+            source_id
+            for source_id, source in sources.items()
+            if source_id not in target_sources
+            and (
+                not isinstance(cached.get(source_id), dict)
+                or cached[source_id].get("input_fingerprint") != input_fingerprint(source)
+                or not cached_record_is_compatible(source, cached[source_id])
+            )
+        ]
+        if stale_non_targets:
+            raise ValueError(
+                "cannot selectively refresh; non-target cached records are missing or stale for current registry: "
+                f"{', '.join(sorted(stale_non_targets))}. Run a full refresh or include them in --sources."
+            )
     for index, (source_id, source) in enumerate(sorted(sources.items()), start=1):
         cached_record = cached.get(source_id)
         is_target = target_sources is None or source_id in target_sources

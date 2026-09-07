@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "generated_at": "2026-09-06T23:19:21Z",
+  "generated_at": "2026-09-07T04:39:46Z",
   "source_fingerprint": "8880302fa424689b39e35031505ece2a13dbf1437775644e9722e63a14c0baf3",
   "records": {
     "abramsky-zvesper-2010-lawvere-bk": {
@@ -138,7 +138,7 @@
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1007%2F978-3-319-41649-6_1",
-      "checked_on": "2026-08-31T03:11:43Z",
+      "checked_on": "2026-09-07T03:34:12Z",
       "metadata": [
         {
           "field": "identifier",
@@ -194,9 +194,9 @@
         "details": "Crossref rights metadata (unspecified)",
         "url": "http://www.springer.com/tdm"
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "atlas-ref-majumdar-2026": {
       "input_fingerprint": "eea9ae07871b43f7259fe4a3ed1d8377800bfb17d5196f716959abcfacdf0e8c",
@@ -528,7 +528,7 @@
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1007%2Fs11225-006-9011-z",
-      "checked_on": "2026-08-31T03:11:54Z",
+      "checked_on": "2026-09-07T03:34:13Z",
       "metadata": [
         {
           "field": "identifier",
@@ -584,16 +584,16 @@
         "details": "Crossref rights metadata (tdm)",
         "url": "http://www.springer.com/tdm"
       },
+      "related_dois": [],
       "status": "NO_AUTOMATED_FOLLOWUP",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "brcic-yampolskiy-2023-own-results": {
       "input_fingerprint": "0ccbd12b04c50b843b13d647a9f2e5a3cffe38eb0e745c6dd8c8b67bb3cc366f",
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1145%2F3603371",
-      "checked_on": "2026-08-31T03:11:55Z",
+      "checked_on": "2026-09-07T03:34:14Z",
       "metadata": [
         {
           "field": "identifier",
@@ -649,9 +649,9 @@
         "details": "Crossref rights metadata (vor)",
         "url": "https://creativecommons.org/licenses/by/4.0/"
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "breuer-1995-self-measurement": {
       "input_fingerprint": "41e9824d32d1ebfa8df0366c4192c6c101ac37babb147837fc9cf0883648bc8a",
@@ -723,7 +723,7 @@
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1145%2F214451.214456",
-      "checked_on": "2026-08-31T03:11:56Z",
+      "checked_on": "2026-09-07T03:34:15Z",
       "metadata": [
         {
           "field": "identifier",
@@ -779,16 +779,16 @@
         "details": "Crossref rights metadata (vor)",
         "url": "https://www.acm.org/publications/policies/copyright_policy#Background"
       },
+      "related_dois": [],
       "status": "NO_AUTOMATED_FOLLOWUP",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "cover-thomas-2006": {
       "input_fingerprint": "56fc80517a5424fc671d067b595742cf7dcf59a5d6985edbedc7eca35f187b10",
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1002%2F047174882x",
-      "checked_on": "2026-08-31T03:11:57Z",
+      "checked_on": "2026-09-07T03:34:16Z",
       "metadata": [
         {
           "field": "identifier",
@@ -844,9 +844,9 @@
         "details": "Crossref rights metadata (tdm)",
         "url": "http://doi.wiley.com/10.1002/tdm_license_1.1"
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "critch-tsimerman-2025": {
       "input_fingerprint": "70494527b82c684c04817646cfab262af1592cd61359df31cfec61556e7777da",
@@ -918,7 +918,7 @@
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1016%2Fs0304-3975%2802%2900094-4",
-      "checked_on": "2026-08-31T03:11:58Z",
+      "checked_on": "2026-09-07T03:34:37Z",
       "metadata": [
         {
           "field": "identifier",
@@ -971,19 +971,19 @@
       ],
       "rights": {
         "outcome": "RIGHTS_RECORDED",
-        "details": "Crossref rights metadata (tdm)",
-        "url": "https://www.elsevier.com/tdm/userlicense/1.0/"
+        "details": "Crossref rights metadata (vor)",
+        "url": "https://www.elsevier.com/open-access/userlicense/1.0/"
       },
+      "related_dois": [],
       "status": "NO_AUTOMATED_FOLLOWUP",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "everitt-etal-2021-agent-incentives": {
       "input_fingerprint": "0e60f149153e8636e480b1d3526a1c91a05c05aef1fc6bf1519ed1d6ad58d41b",
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1609%2Faaai.v35i13.17368",
-      "checked_on": "2026-08-31T03:11:59Z",
+      "checked_on": "2026-09-07T03:34:37Z",
       "metadata": [
         {
           "field": "identifier",
@@ -1039,16 +1039,16 @@
         "details": "Crossref returned no explicit license or rights metadata.",
         "url": ""
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "howard-matheson-2005-influence-diagrams": {
       "input_fingerprint": "e731411ec56042d4b341de11d2a36c747b98010eff9ef1b96624a7c31b605250",
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1287%2Fdeca.1050.0020",
-      "checked_on": "2026-08-31T03:12:00Z",
+      "checked_on": "2026-09-07T03:34:38Z",
       "metadata": [
         {
           "field": "identifier",
@@ -1104,9 +1104,9 @@
         "details": "Crossref returned no explicit license or rights metadata.",
         "url": ""
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "igel-toussaint-2003": {
       "input_fingerprint": "67b63322488e7c4a6e227a2902ea1c872f90244e3a48373a38979e742510c891",
@@ -1178,7 +1178,7 @@
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1023%2Fb%3Ajmma.0000049381.24625.f7",
-      "checked_on": "2026-08-31T03:12:01Z",
+      "checked_on": "2026-09-07T03:34:39Z",
       "metadata": [
         {
           "field": "identifier",
@@ -1231,19 +1231,19 @@
       ],
       "rights": {
         "outcome": "RIGHTS_RECORDED",
-        "details": "Crossref rights metadata (tdm)",
+        "details": "Crossref rights metadata (vor)",
         "url": "https://www.springernature.com/gp/researchers/text-and-data-mining"
       },
+      "related_dois": [],
       "status": "NO_AUTOMATED_FOLLOWUP",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "lawvere-1969-diagonal-ccc": {
       "input_fingerprint": "adb4425ec9489005d5a04127fe9d0361e4b53ca5bb8ab7218254c775e6b2d023",
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1007%2Fbfb0080769",
-      "checked_on": "2026-08-31T03:12:02Z",
+      "checked_on": "2026-09-07T03:34:40Z",
       "metadata": [
         {
           "field": "identifier",
@@ -1299,16 +1299,16 @@
         "details": "Crossref rights metadata (unspecified)",
         "url": "http://www.springer.com/tdm"
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "mais-a2-2026": {
       "input_fingerprint": "d3516824a808d2d10cfa1446c64c4766d1d255df5dc2845128677f7266866ab7",
       "provider": "html",
       "lookup_status": "OK",
       "checked_url": "https://github.com/lionellevine/MAIS/blob/9dd29f8bf5ccd1e7701e300039b09ed4096b6516/agendas/A2/MAIS-A2.tex",
-      "checked_on": "2026-08-31T03:12:02Z",
+      "checked_on": "2026-09-07T03:27:16Z",
       "metadata": [
         {
           "field": "identifier",
@@ -1319,8 +1319,8 @@
         {
           "field": "title",
           "catalogue_value": "Behavioral tomography of causal world models",
-          "source_value": "MAIS/agendas/A2/MAIS-A2.tex at 9dd29f8bf5ccd1e7701e300039b09ed4096b6516 · lionellevine/MAIS",
-          "outcome": "POSSIBLE_CONFLICT"
+          "source_value": "—",
+          "outcome": "MISSING_IN_SOURCE"
         },
         {
           "field": "authors",
@@ -1364,16 +1364,16 @@
         "details": "No explicit rights or license metadata was found in the source HTML.",
         "url": "https://github.com/lionellevine/MAIS/blob/9dd29f8bf5ccd1e7701e300039b09ed4096b6516/agendas/A2/MAIS-A2.tex"
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "mais-a3-2026": {
       "input_fingerprint": "a1373bd043776880a675ec4c0d4d569c32ab00c73266931f321e156b39e77e97",
       "provider": "html",
       "lookup_status": "OK",
       "checked_url": "https://github.com/lionellevine/MAIS/blob/9dd29f8bf5ccd1e7701e300039b09ed4096b6516/agendas/A3/MAIS-A3.tex",
-      "checked_on": "2026-08-31T03:12:03Z",
+      "checked_on": "2026-09-07T03:27:16Z",
       "metadata": [
         {
           "field": "identifier",
@@ -1384,8 +1384,8 @@
         {
           "field": "title",
           "catalogue_value": "The geometry and identifiability of superposition",
-          "source_value": "MAIS/agendas/A3/MAIS-A3.tex at 9dd29f8bf5ccd1e7701e300039b09ed4096b6516 · lionellevine/MAIS",
-          "outcome": "POSSIBLE_CONFLICT"
+          "source_value": "—",
+          "outcome": "MISSING_IN_SOURCE"
         },
         {
           "field": "authors",
@@ -1429,16 +1429,16 @@
         "details": "No explicit rights or license metadata was found in the source HTML.",
         "url": "https://github.com/lionellevine/MAIS/blob/9dd29f8bf5ccd1e7701e300039b09ed4096b6516/agendas/A3/MAIS-A3.tex"
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "mais-a6-2026": {
       "input_fingerprint": "63e1401a798237448379c95b2aa163241346c4dc7c122ee7741423a56067d153",
       "provider": "html",
       "lookup_status": "OK",
       "checked_url": "https://github.com/lionellevine/MAIS/blob/9dd29f8bf5ccd1e7701e300039b09ed4096b6516/agendas/A6/MAIS-A6.tex",
-      "checked_on": "2026-09-06T18:09:38Z",
+      "checked_on": "2026-09-07T03:27:17Z",
       "metadata": [
         {
           "field": "identifier",
@@ -1449,8 +1449,8 @@
         {
           "field": "title",
           "catalogue_value": "—",
-          "source_value": "MAIS/agendas/A6/MAIS-A6.tex at 9dd29f8bf5ccd1e7701e300039b09ed4096b6516 · lionellevine/MAIS",
-          "outcome": "MISSING_IN_CATALOGUE"
+          "source_value": "—",
+          "outcome": "NOT_APPLICABLE"
         },
         {
           "field": "authors",
@@ -2153,7 +2153,7 @@
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1017%2Fcbo9780511803161",
-      "checked_on": "2026-08-31T03:12:12Z",
+      "checked_on": "2026-09-07T03:34:41Z",
       "metadata": [
         {
           "field": "identifier",
@@ -2209,9 +2209,9 @@
         "details": "Crossref rights metadata (unspecified)",
         "url": "https://www.cambridge.org/core/terms"
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "richens-everitt-2024": {
       "input_fingerprint": "5755bbb693f1dd36d54752081f2a97411000a49dbc7e155f331abc14ee338212",
@@ -2348,7 +2348,7 @@
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1007%2Fbf01700692",
-      "checked_on": "2026-08-31T03:12:13Z",
+      "checked_on": "2026-09-07T03:34:42Z",
       "metadata": [
         {
           "field": "identifier",
@@ -2404,16 +2404,16 @@
         "details": "Crossref rights metadata (tdm)",
         "url": "http://www.springer.com/tdm"
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-002": {
       "input_fingerprint": "687ca326303a1d6eb9e24d818476f778fe7808716d47fad539b6f8172e24b384",
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1112%2Fplms%2Fs2-42.1.230",
-      "checked_on": "2026-08-31T03:12:14Z",
+      "checked_on": "2026-09-07T03:34:43Z",
       "metadata": [
         {
           "field": "identifier",
@@ -2466,19 +2466,19 @@
       ],
       "rights": {
         "outcome": "RIGHTS_RECORDED",
-        "details": "Crossref rights metadata (tdm)",
-        "url": "http://doi.wiley.com/10.1002/tdm_license_1.1"
+        "details": "Crossref rights metadata (vor)",
+        "url": "http://onlinelibrary.wiley.com/termsAndConditions#vor"
       },
+      "related_dois": [],
       "status": "NO_AUTOMATED_FOLLOWUP",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-005": {
       "input_fingerprint": "00582988a52ee266a1a302609c5ab1e31ab19877228c9b6afcccb8ee46d2ab8c",
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1016%2Fj.physd.2008.03.040",
-      "checked_on": "2026-08-31T03:12:15Z",
+      "checked_on": "2026-09-07T03:34:44Z",
       "metadata": [
         {
           "field": "identifier",
@@ -2534,9 +2534,9 @@
         "details": "Crossref rights metadata (tdm)",
         "url": "https://www.elsevier.com/tdm/userlicense/1.0/"
       },
+      "related_dois": [],
       "status": "NO_AUTOMATED_FOLLOWUP",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-008": {
       "input_fingerprint": "505a75149e749bea3f8e8a62da213dbdc17688a4e31ff33b8ec7259cce952fcc",
@@ -2608,7 +2608,7 @@
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1162%2Fneco.1996.8.7.1391",
-      "checked_on": "2026-08-31T03:12:16Z",
+      "checked_on": "2026-09-07T03:34:45Z",
       "metadata": [
         {
           "field": "identifier",
@@ -2664,16 +2664,16 @@
         "details": "Crossref returned no explicit license or rights metadata.",
         "url": ""
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-019": {
       "input_fingerprint": "a56ce1e1ccacbff6eb59b7aa5996ad30ef025631371459efc0b74fdb86f3b18d",
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1109%2F4235.585893",
-      "checked_on": "2026-08-31T03:12:17Z",
+      "checked_on": "2026-09-07T03:34:46Z",
       "metadata": [
         {
           "field": "identifier",
@@ -2729,16 +2729,16 @@
         "details": "Crossref rights metadata (vor)",
         "url": "https://ieeexplore.ieee.org/Xplorehelp/downloads/license-information/IEEE.html"
       },
+      "related_dois": [],
       "status": "NO_AUTOMATED_FOLLOWUP",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-021": {
       "input_fingerprint": "0259f1929cc69a1ac2f1f87e1ab354b6f3a558ae40a70f98388c7b06c593c940",
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1109%2Ftac.1972.1100128",
-      "checked_on": "2026-08-31T03:12:18Z",
+      "checked_on": "2026-09-07T03:34:47Z",
       "metadata": [
         {
           "field": "identifier",
@@ -2794,9 +2794,9 @@
         "details": "Crossref rights metadata (vor)",
         "url": "https://ieeexplore.ieee.org/Xplorehelp/downloads/license-information/IEEE.html"
       },
+      "related_dois": [],
       "status": "NO_AUTOMATED_FOLLOWUP",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-022": {
       "input_fingerprint": "1026cff22ac9e100e8e543d679de0a3854bd394201c2738f5aa52c8396de4a7b",
@@ -3003,7 +3003,7 @@
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1080%2F00207727008920220",
-      "checked_on": "2026-08-31T03:12:19Z",
+      "checked_on": "2026-09-07T03:34:48Z",
       "metadata": [
         {
           "field": "identifier",
@@ -3059,9 +3059,9 @@
         "details": "Crossref returned no explicit license or rights metadata.",
         "url": ""
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-026": {
       "input_fingerprint": "c96f26d20c2e5a3dd820f05e2fe234c4a35c8c79e4a883aa02591ff5767bfe4e",
@@ -3133,7 +3133,7 @@
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1016%2Fj.physa.2003.09.007",
-      "checked_on": "2026-08-31T03:12:20Z",
+      "checked_on": "2026-09-07T03:34:49Z",
       "metadata": [
         {
           "field": "identifier",
@@ -3169,7 +3169,7 @@
           "field": "volume_issue",
           "catalogue_value": "vol. 331, no. 1",
           "source_value": "vol. 331, no. 1-2",
-          "outcome": "MATCH"
+          "outcome": "POSSIBLE_CONFLICT"
         },
         {
           "field": "pages",
@@ -3189,16 +3189,16 @@
         "details": "Crossref rights metadata (tdm)",
         "url": "https://www.elsevier.com/tdm/userlicense/1.0/"
       },
-      "status": "NO_AUTOMATED_FOLLOWUP",
-      "notes": "",
-      "related_dois": []
+      "related_dois": [],
+      "status": "NEEDS_HUMAN",
+      "notes": ""
     },
     "survey-ref-028": {
       "input_fingerprint": "1f95eaedaa94ffe3d894d797d5f04a9ddc3e31eb861b722e0db3978e3d83c329",
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.5840%2Fmonist197962319",
-      "checked_on": "2026-08-31T03:12:21Z",
+      "checked_on": "2026-09-07T03:34:50Z",
       "metadata": [
         {
           "field": "identifier",
@@ -3254,9 +3254,9 @@
         "details": "Crossref returned no explicit license or rights metadata.",
         "url": ""
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-029": {
       "input_fingerprint": "0bfd7eb94fdb72e67569eef29cd7f949e39099735a0614f21219bfa2e268897b",
@@ -3393,7 +3393,7 @@
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1086%2F256963",
-      "checked_on": "2026-08-31T03:12:22Z",
+      "checked_on": "2026-09-07T03:34:51Z",
       "metadata": [
         {
           "field": "identifier",
@@ -3449,16 +3449,16 @@
         "details": "Crossref returned no explicit license or rights metadata.",
         "url": ""
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-032": {
       "input_fingerprint": "2dd5b76f193b63cdc33dd639324ad504d3ac9eed2c7ec13da72468fb8cf13b22",
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1142%2F9789814368018_0001",
-      "checked_on": "2026-08-31T03:12:23Z",
+      "checked_on": "2026-09-07T03:34:52Z",
       "metadata": [
         {
           "field": "identifier",
@@ -3514,9 +3514,9 @@
         "details": "Crossref returned no explicit license or rights metadata.",
         "url": ""
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-033": {
       "input_fingerprint": "e62836d035b9a89e159b127082504cde4e5add0b144066d21e5bee4c2f32e839",
@@ -3783,7 +3783,7 @@
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.2307%2F1990888",
-      "checked_on": "2026-08-31T03:12:31Z",
+      "checked_on": "2026-09-07T03:34:54Z",
       "metadata": [
         {
           "field": "identifier",
@@ -3839,16 +3839,16 @@
         "details": "Crossref returned no explicit license or rights metadata.",
         "url": ""
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-038": {
       "input_fingerprint": "66e6d5862562063f0de7655cd0ec9186fa1d89d409f20538881e97447961672a",
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.2307%2F2371045",
-      "checked_on": "2026-08-31T03:12:31Z",
+      "checked_on": "2026-09-07T03:34:54Z",
       "metadata": [
         {
           "field": "identifier",
@@ -3904,9 +3904,9 @@
         "details": "Crossref returned no explicit license or rights metadata.",
         "url": ""
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-039": {
       "input_fingerprint": "a822a6e9bec3c72b81eb07b189e9652075a8a75d48458976f1c19f76360aaaf6",
@@ -4108,7 +4108,7 @@
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1038%2Fs42256-018-0002-3",
-      "checked_on": "2026-08-31T03:12:32Z",
+      "checked_on": "2026-09-07T03:34:55Z",
       "metadata": [
         {
           "field": "identifier",
@@ -4161,19 +4161,19 @@
       ],
       "rights": {
         "outcome": "RIGHTS_RECORDED",
-        "details": "Crossref rights metadata (tdm)",
+        "details": "Crossref rights metadata (vor)",
         "url": "https://www.springernature.com/gp/researchers/text-and-data-mining"
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-043": {
       "input_fingerprint": "a17a987645c246bcf6efdf40e68a906db7521d2e568cd614de64dcd5e2d45b3e",
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1038%2Fd41586-019-00012-4",
-      "checked_on": "2026-08-31T03:12:33Z",
+      "checked_on": "2026-09-07T03:34:56Z",
       "metadata": [
         {
           "field": "identifier",
@@ -4226,19 +4226,19 @@
       ],
       "rights": {
         "outcome": "RIGHTS_RECORDED",
-        "details": "Crossref rights metadata (tdm)",
+        "details": "Crossref rights metadata (vor)",
         "url": "https://www.springernature.com/gp/researchers/text-and-data-mining"
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-044": {
       "input_fingerprint": "513deaeafaf9fb2b1a01e77beafbee2d6b21b298df857fd928546643e2fa11ea",
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1145%2F1968.1972",
-      "checked_on": "2026-08-31T03:12:34Z",
+      "checked_on": "2026-09-07T03:34:57Z",
       "metadata": [
         {
           "field": "identifier",
@@ -4294,9 +4294,9 @@
         "details": "Crossref rights metadata (vor)",
         "url": "https://www.acm.org/publications/policies/copyright_policy#Background"
       },
+      "related_dois": [],
       "status": "NO_AUTOMATED_FOLLOWUP",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-045": {
       "input_fingerprint": "1e5af22077007dceba347b79fc8054d253d65a60b6d9ef085f8fcda710e9cb9e",
@@ -4368,7 +4368,7 @@
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1111%2F1467-999x.00147",
-      "checked_on": "2026-08-31T03:12:36Z",
+      "checked_on": "2026-09-07T03:34:58Z",
       "metadata": [
         {
           "field": "identifier",
@@ -4424,16 +4424,16 @@
         "details": "Crossref rights metadata (vor)",
         "url": "http://onlinelibrary.wiley.com/termsAndConditions#vor"
       },
+      "related_dois": [],
       "status": "NO_AUTOMATED_FOLLOWUP",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-047": {
       "input_fingerprint": "eea1821acf35bba6bb50aaf9ca227200c97fb596169f1bf74c87f02ac17372af",
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1007%2Fs00453-008-9244-5",
-      "checked_on": "2026-08-31T03:12:37Z",
+      "checked_on": "2026-09-07T03:34:59Z",
       "metadata": [
         {
           "field": "identifier",
@@ -4489,16 +4489,16 @@
         "details": "Crossref rights metadata (tdm)",
         "url": "http://www.springer.com/tdm"
       },
+      "related_dois": [],
       "status": "NO_AUTOMATED_FOLLOWUP",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-048": {
       "input_fingerprint": "0a32ad894163da321eabb36972a8d63faea8fcd538adf4155afc09f5ced1a968",
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1109%2Ftevc.2005.856205",
-      "checked_on": "2026-08-31T03:12:38Z",
+      "checked_on": "2026-09-07T03:35:00Z",
       "metadata": [
         {
           "field": "identifier",
@@ -4554,16 +4554,16 @@
         "details": "Crossref rights metadata (vor)",
         "url": "https://ieeexplore.ieee.org/Xplorehelp/downloads/license-information/IEEE.html"
       },
+      "related_dois": [],
       "status": "NO_AUTOMATED_FOLLOWUP",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-049": {
       "input_fingerprint": "fc649f8537a7662a70c461e82143e42bba5b90a3aadc086a8bdeb2b6d618df1d",
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1016%2Fs0893-6080%2898%2900140-3",
-      "checked_on": "2026-08-31T03:12:39Z",
+      "checked_on": "2026-09-07T03:35:01Z",
       "metadata": [
         {
           "field": "identifier",
@@ -4619,9 +4619,9 @@
         "details": "Crossref rights metadata (tdm)",
         "url": "https://www.elsevier.com/tdm/userlicense/1.0/"
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-050": {
       "input_fingerprint": "f729defac1fbb2b43e83573a439e287f64148f663a29ab2982be59da9ec12669",
@@ -4711,7 +4711,7 @@
           "field": "authors",
           "catalogue_value": "F. Locatello et al.",
           "source_value": "Francesco Locatello; Stefan Bauer; Mario Lucic; Gunnar Raetsch; Sylvain Gelly; Bernhard Schölkopf; Olivier Bachem",
-          "outcome": "POSSIBLE_CONFLICT"
+          "outcome": "MATCH"
         },
         {
           "field": "date",
@@ -4823,7 +4823,7 @@
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1103%2Fphysreve.65.016128",
-      "checked_on": "2026-08-31T03:12:40Z",
+      "checked_on": "2026-09-07T03:35:02Z",
       "metadata": [
         {
           "field": "identifier",
@@ -4879,9 +4879,9 @@
         "details": "Crossref rights metadata (vor)",
         "url": "http://link.aps.org/licenses/aps-default-license"
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-054": {
       "input_fingerprint": "61e0a7b907d0f5c60d0c22171d59d6f91f9137f6245f0f22a2871c3346168c0d",
@@ -4953,7 +4953,7 @@
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.2139%2Fssrn.3968077",
-      "checked_on": "2026-08-31T03:12:41Z",
+      "checked_on": "2026-09-07T03:35:03Z",
       "metadata": [
         {
           "field": "identifier",
@@ -5009,16 +5009,16 @@
         "details": "Crossref returned no explicit license or rights metadata.",
         "url": ""
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-056": {
       "input_fingerprint": "d717a6735aa486be21c16f408a5b5c8367fd45f01b09ab9d9bb79fb2f7ccf4d3",
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1613%2Fjair.1.12202",
-      "checked_on": "2026-08-31T03:12:42Z",
+      "checked_on": "2026-09-07T03:35:04Z",
       "metadata": [
         {
           "field": "identifier",
@@ -5074,9 +5074,9 @@
         "details": "Crossref returned no explicit license or rights metadata.",
         "url": ""
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-057": {
       "input_fingerprint": "d63aa7d592d68ef72648723d0fe50f9122aadcba0e5f04da936ff00a3f3d3d6c",
@@ -5278,7 +5278,7 @@
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1007%2F978-3-319-63703-7_16",
-      "checked_on": "2026-08-31T03:12:43Z",
+      "checked_on": "2026-09-07T03:35:05Z",
       "metadata": [
         {
           "field": "identifier",
@@ -5334,9 +5334,9 @@
         "details": "Crossref rights metadata (unspecified)",
         "url": "http://www.springer.com/tdm"
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-061": {
       "input_fingerprint": "8be9b5e3637c98dc6eff57a159e69015f28fb5c5bec28db0bca734b995731f1b",
@@ -5408,7 +5408,7 @@
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.2307%2F2266895",
-      "checked_on": "2026-08-31T03:12:44Z",
+      "checked_on": "2026-09-07T03:35:06Z",
       "metadata": [
         {
           "field": "identifier",
@@ -5464,9 +5464,9 @@
         "details": "Crossref rights metadata (unspecified)",
         "url": "https://www.cambridge.org/core/terms"
       },
+      "related_dois": [],
       "status": "NO_AUTOMATED_FOLLOWUP",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-063": {
       "input_fingerprint": "b4962a37d712da1f5e8c03c8afd33fdd4a40c78399f7060a01b82b71570dde86",
@@ -5538,7 +5538,7 @@
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1142%2Fs2705078520500034",
-      "checked_on": "2026-08-31T03:12:46Z",
+      "checked_on": "2026-09-07T03:35:07Z",
       "metadata": [
         {
           "field": "identifier",
@@ -5594,16 +5594,16 @@
         "details": "Crossref returned no explicit license or rights metadata.",
         "url": ""
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-065": {
       "input_fingerprint": "69d1d6c64068b0385e3b1c150bd0d337ab5e8818dbc5feb47c6cd77fea84c52a",
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1142%2Fs2705078520500150",
-      "checked_on": "2026-08-31T03:12:47Z",
+      "checked_on": "2026-09-07T03:35:08Z",
       "metadata": [
         {
           "field": "identifier",
@@ -5659,16 +5659,16 @@
         "details": "Crossref returned no explicit license or rights metadata.",
         "url": ""
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-066": {
       "input_fingerprint": "4279f094738dd11d0a11e53a5a4307a1f642f45769bdbf0c511ba1ff84d1e646",
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1145%2F1149114.1149119",
-      "checked_on": "2026-08-31T03:12:48Z",
+      "checked_on": "2026-09-07T03:35:09Z",
       "metadata": [
         {
           "field": "identifier",
@@ -5724,9 +5724,9 @@
         "details": "Crossref rights metadata (vor)",
         "url": "https://www.acm.org/publications/policies/copyright_policy#Background"
       },
+      "related_dois": [],
       "status": "NO_AUTOMATED_FOLLOWUP",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-067": {
       "input_fingerprint": "99eb6ae75aeaf87d9adeef4a00d83164f0f17b2771fd78637db7b5d116910bbd",
@@ -5798,7 +5798,7 @@
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1088%2F1402-4896%2Faa7ca8",
-      "checked_on": "2026-08-31T03:12:49Z",
+      "checked_on": "2026-09-07T03:35:10Z",
       "metadata": [
         {
           "field": "identifier",
@@ -5854,9 +5854,9 @@
         "details": "Crossref rights metadata (vor)",
         "url": "https://publishingsupport.iopscience.iop.org/iop-standard/v1"
       },
+      "related_dois": [],
       "status": "NO_AUTOMATED_FOLLOWUP",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-069": {
       "input_fingerprint": "e22803d70d6042d6675f737a68988dff15ed1d4e9e3277773c125d6ce7544377",
@@ -5993,7 +5993,7 @@
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1080%2F0952813x.2014.895108",
-      "checked_on": "2026-08-31T03:12:55Z",
+      "checked_on": "2026-09-07T03:35:11Z",
       "metadata": [
         {
           "field": "identifier",
@@ -6049,16 +6049,16 @@
         "details": "Crossref returned no explicit license or rights metadata.",
         "url": ""
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-072": {
       "input_fingerprint": "9f5d0ae5a8f2b6468670e2b8e172d3026987aecd0d5bb3f313c2a3d5e55eebe6",
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1007%2Fs10955-017-1836-5",
-      "checked_on": "2026-08-31T03:12:56Z",
+      "checked_on": "2026-09-07T03:35:12Z",
       "metadata": [
         {
           "field": "identifier",
@@ -6114,9 +6114,9 @@
         "details": "Crossref rights metadata (unspecified)",
         "url": "http://www.springer.com/tdm"
       },
+      "related_dois": [],
       "status": "NO_AUTOMATED_FOLLOWUP",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-073": {
       "input_fingerprint": "4f9f6a48759e58646c6f7b1bb1567f7afce5678cdccadba31f8464a2f2d1277a",
@@ -6188,7 +6188,7 @@
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1007%2F978-1-349-17295-5_4",
-      "checked_on": "2026-08-31T03:12:57Z",
+      "checked_on": "2026-09-07T03:35:13Z",
       "metadata": [
         {
           "field": "identifier",
@@ -6244,16 +6244,16 @@
         "details": "Crossref returned no explicit license or rights metadata.",
         "url": ""
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-075": {
       "input_fingerprint": "b4fa36aa45458400e2dd730d4ee0892784a11983ccc4def383671047735c3482",
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1002%2F%28sici%291234-981x%28199707%295%3A3%3C305%3A%3Aaid-euro184%3E3.0.co%3B2-4",
-      "checked_on": "2026-08-31T03:12:58Z",
+      "checked_on": "2026-09-07T03:35:15Z",
       "metadata": [
         {
           "field": "identifier",
@@ -6309,16 +6309,16 @@
         "details": "Crossref rights metadata (tdm)",
         "url": "http://doi.wiley.com/10.1002/tdm_license_1"
       },
+      "related_dois": [],
       "status": "NO_AUTOMATED_FOLLOWUP",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-076": {
       "input_fingerprint": "22aa9cad2e6ace9e1d2ba54e21ea4b2c21afd66d816dbcb00d5c392a65441408",
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1016%2F0149-7189%2879%2990048-x",
-      "checked_on": "2026-08-31T03:12:59Z",
+      "checked_on": "2026-09-07T03:35:15Z",
       "metadata": [
         {
           "field": "identifier",
@@ -6374,9 +6374,9 @@
         "details": "Crossref rights metadata (tdm)",
         "url": "https://www.elsevier.com/tdm/userlicense/1.0/"
       },
+      "related_dois": [],
       "status": "NO_AUTOMATED_FOLLOWUP",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "survey-ref-077": {
       "input_fingerprint": "c2253774f0f407f3f4c21c783e3f316ff709840726cb1f32ef10a03ba83986ab",
@@ -6513,7 +6513,7 @@
       "provider": "arxiv",
       "lookup_status": "OK",
       "checked_url": "https://export.arxiv.org/api/query?id_list=physics%2F0104007v2",
-      "checked_on": "2026-08-31T07:42:39Z",
+      "checked_on": "2026-09-07T03:35:17Z",
       "metadata": [
         {
           "field": "identifier",
@@ -6536,8 +6536,8 @@
         {
           "field": "date",
           "catalogue_value": "2003",
-          "source_value": "2001-04-02T19:15:06Z",
-          "outcome": "POSSIBLE_CONFLICT"
+          "source_value": "2003-05-16T00:38:56Z",
+          "outcome": "MATCH"
         },
         {
           "field": "venue",
@@ -6583,7 +6583,7 @@
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1214%2F12-aos1080",
-      "checked_on": "2026-08-31T03:13:03Z",
+      "checked_on": "2026-09-07T03:35:17Z",
       "metadata": [
         {
           "field": "identifier",
@@ -6639,16 +6639,16 @@
         "details": "Crossref returned no explicit license or rights metadata.",
         "url": ""
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "wolpert-1996-lack": {
       "input_fingerprint": "886757745853e25b9300b417a82e906aeba49ceaeb4e1d1afafc1f02961efa36",
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.1162%2Fneco.1996.8.7.1341",
-      "checked_on": "2026-08-31T03:13:04Z",
+      "checked_on": "2026-09-07T03:35:18Z",
       "metadata": [
         {
           "field": "identifier",
@@ -6704,16 +6704,16 @@
         "details": "Crossref returned no explicit license or rights metadata.",
         "url": ""
       },
+      "related_dois": [],
       "status": "NEEDS_HUMAN",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     },
     "yanofsky-2003-lawvere": {
       "input_fingerprint": "71616b0b8c307728b667b5548683f1235ee75233f5a0048acd81c40bdd6764c2",
       "provider": "crossref",
       "lookup_status": "OK",
       "checked_url": "https://api.crossref.org/v1/works/10.2178%2Fbsl%2F1058448677",
-      "checked_on": "2026-08-31T03:13:05Z",
+      "checked_on": "2026-09-07T03:35:20Z",
       "metadata": [
         {
           "field": "identifier",
@@ -6769,9 +6769,9 @@
         "details": "Crossref rights metadata (unspecified)",
         "url": "https://www.cambridge.org/core/terms"
       },
+      "related_dois": [],
       "status": "NO_AUTOMATED_FOLLOWUP",
-      "notes": "",
-      "related_dois": []
+      "notes": ""
     }
   }
 }

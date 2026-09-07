@@ -138,6 +138,7 @@ def actionable_findings(
             "payload": payload,
             "summary": f"Lookup status: {lookup_status}",
         }
+        return findings
 
     # 2. Associated published DOI findings (keyed by specific reported DOI)
     for related in record.get("related_dois", []):

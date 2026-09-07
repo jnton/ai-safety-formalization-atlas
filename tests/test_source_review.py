@@ -380,23 +380,6 @@ def test_complete_snapshot_is_accepted_and_a_missing_source_is_not(tmp_path: Pat
     assert "must evaluate every work source" in output
 
 
-def test_html_parser_extracts_article_heading_for_document_title() -> None:
-    refresh = _refresh_module()
-    html_doc = """<html><head>
-    <title>MAIS/open-problems/MAIS-O23.md at main · lionellevine/MAIS</title>
-    </head><body>
-    <article class="markdown-body">
-      <h1>Do margins imply behavioral identifiability of causal models?</h1>
-      <p>Some text</p>
-    </article>
-    </body></html>""".encode("utf-8")
-    external = refresh.html_external(
-        html_doc,
-        "https://github.com/lionellevine/MAIS/blob/main/open-problems/MAIS-O23.md",
-    )
-    assert external["title"] == "Do margins imply behavioral identifiability of causal models?"
-
-
 def test_archive_org_wayback_chrome_stripped_to_avoid_false_conflict() -> None:
     refresh = _refresh_module()
     html_doc = """<!DOCTYPE html>
@@ -408,3 +391,201 @@ def test_archive_org_wayback_chrome_stripped_to_avoid_false_conflict() -> None:
         "https://web.archive.org/web/20220222045551/http://www.cs.uu.nl/groups/AD/UU-PCS-2021-02.pdf",
     )
     assert external["title"] == ""
+
+
+def test_date_match_compares_extracted_year_not_access_date() -> None:
+    refresh = _refresh_module()
+    citation = "Author, “Paper Title,” 2019. Accessed: Jun. 29, 2021."
+    # Extracted year is 2019; external record reports 2021. Even though 2021 is in citation,
+    # it must be a POSSIBLE_CONFLICT rather than MATCH.
+    assert refresh.date_match("2019", "2021", citation) == "POSSIBLE_CONFLICT"
+    assert refresh.date_match("2019", "2019", citation) == "MATCH"
+    assert refresh.date_match("2019", "2019-06-15", citation) == "MATCH"
+
+
+def test_identifier_match_canonical_exact_not_substring() -> None:
+    refresh = _refresh_module()
+    # DOIs must not match by partial substring
+    assert refresh.identifier_match("doi:10.1000/1", "doi:10.1000/10") == "POSSIBLE_CONFLICT"
+    assert refresh.identifier_match("doi:10.1000/10", "doi:10.1000/1") == "POSSIBLE_CONFLICT"
+    assert refresh.identifier_match("doi:10.1000/abc", "doi:10.1000/ABC") == "MATCH"
+
+    # arXiv IDs must compare base or exact, not substring
+    assert refresh.identifier_match("arxiv:2101.0101", "arxiv:2101.01011") == "POSSIBLE_CONFLICT"
+    assert refresh.identifier_match("arxiv:2101.0101", "arxiv:2101.0101v2") == "MATCH"
+    assert refresh.identifier_match("arxiv:2101.0101v1", "arxiv:2101.0101v2") == "MATCH"
+
+
+def test_volume_issue_and_pages_numeric_boundaries() -> None:
+    refresh = _refresh_module()
+    # Volume / issue numeric boundaries
+    assert refresh.volume_issue_match("vol. 8", "vol. 80") == "POSSIBLE_CONFLICT"
+    assert refresh.volume_issue_match("vol. 8, no. 1", "vol. 8, no. 10") == "POSSIBLE_CONFLICT"
+    assert refresh.volume_issue_match("vol. 8, no. 1", "vol. 8, no. 1") == "MATCH"
+    assert refresh.volume_issue_match("vol. 8", "vol. 8, no. 1") == "MATCH"
+
+    # Page range numeric boundaries
+    assert refresh.pages_match("134", "1341-1390") == "POSSIBLE_CONFLICT"
+    assert refresh.pages_match("1341-1390", "1341–1390") == "MATCH"
+    assert refresh.pages_match("1341-1390", "1341-90") == "MATCH"
+    assert refresh.pages_match("1341", "1341-1390") == "MATCH"
+
+
+def test_author_match_et_al_abbreviation() -> None:
+    refresh = _refresh_module()
+    # Catalogue intentionally uses "et al." abbreviation:
+    # All retrieved authors do NOT need to appear in the citation, but leading author must.
+    retrieved = ["David H. Wolpert", "William G. Macready", "Third Author", "Fourth Author"]
+    assert refresh.author_match("D. H. Wolpert et al.", retrieved) == "MATCH"
+    assert refresh.author_match("Wolpert et al.", retrieved) == "MATCH"
+
+    # If the leading author does not match, it must conflict
+    assert refresh.author_match("J. Smith et al.", retrieved) == "POSSIBLE_CONFLICT"
+
+
+def test_arxiv_metadata_uses_updated_date_for_versioned_locator() -> None:
+    refresh = _refresh_module()
+    atom_xml = b"""<?xml version="1.0" encoding="UTF-8"?>
+    <feed xmlns="http://www.w3.org/2005/Atom">
+      <entry>
+        <id>http://arxiv.org/abs/physics/0104007v2</id>
+        <published>2001-04-02T19:08:52Z</published>
+        <updated>2001-04-06T12:34:56Z</updated>
+        <title>Versioned Preprint Title</title>
+        <author><name>Author Name</name></author>
+      </entry>
+    </feed>"""
+    # Versioned request should yield updated date
+    ver_meta, _ = refresh.arxiv_metadata(atom_xml, "physics/0104007v2")
+    assert ver_meta["date"] == "2001-04-06T12:34:56Z"
+    assert ver_meta["published"] == "2001-04-02T19:08:52Z"
+    assert ver_meta["updated"] == "2001-04-06T12:34:56Z"
+
+    # Unversioned request should yield published date
+    unver_meta, _ = refresh.arxiv_metadata(atom_xml, "physics/0104007")
+    assert unver_meta["date"] == "2001-04-02T19:08:52Z"
+
+
+def test_github_blob_chrome_tex_treated_as_not_extracted() -> None:
+    refresh = _refresh_module()
+    html_doc = """<html><head>
+    <title>MAIS/agendas/A2/MAIS-A2.tex at 9dd29f8bf5ccd1e7701e300039b09ed4096b6516 · lionellevine/MAIS · GitHub</title>
+    </head><body>
+    <table class="highlight"><tr><td>\\section{Behavioral tomography}</td></tr></table>
+    </body></html>""".encode("utf-8")
+    external = refresh.html_external(
+        html_doc,
+        "https://github.com/lionellevine/MAIS/blob/9dd29f8bf5ccd1e7701e300039b09ed4096b6516/agendas/A2/MAIS-A2.tex",
+    )
+    # GitHub blob chrome should be discarded, leaving title not extracted
+    assert external["title"] == ""
+
+
+def test_crossref_multiple_licenses_prefers_vor_over_tdm() -> None:
+    refresh = _refresh_module()
+    message = {
+        "DOI": "10.1000/example",
+        "title": ["Example Paper"],
+        "license": [
+            {"URL": "https://example.com/tdm-license", "content-version": "tdm"},
+            {"URL": "https://example.com/vor-license", "content-version": "vor"},
+        ],
+    }
+    external = refresh.crossref_external(message)
+    assert external["rights"]["outcome"] == "RIGHTS_RECORDED"
+    assert external["rights"]["url"] == "https://example.com/vor-license"
+    assert "vor" in external["rights"]["details"]
+
+
+def test_failed_lookup_exposes_only_lookup_finding() -> None:
+    refresh = _refresh_module()
+    source = {"citation": "Example citation", "locator": "https://example.com/fail"}
+    record = {
+        "lookup_status": "HTTP_ERROR",
+        "checked_url": "https://example.com/fail",
+        "metadata": [
+            {"field": "title", "catalogue_value": "Example", "source_value": "—", "outcome": "UNAVAILABLE"},
+            {"field": "date", "catalogue_value": "2020", "source_value": "—", "outcome": "UNAVAILABLE"},
+        ],
+        "rights": {"outcome": "RIGHTS_UNAVAILABLE", "details": "Lookup failed.", "url": ""},
+    }
+    findings = refresh.actionable_findings("src-fail", source, record)
+    assert list(findings.keys()) == ["lookup"]
+    assert findings["lookup"]["category"] == "lookup"
+
+    # Same for MISSING_LOCATOR
+    record_missing = {
+        "lookup_status": "MISSING_LOCATOR",
+        "metadata": [],
+        "rights": {"outcome": "RIGHTS_UNAVAILABLE", "details": "No locator", "url": ""},
+    }
+    findings_missing = refresh.actionable_findings("src-missing", {"citation": "Test"}, record_missing)
+    assert list(findings_missing.keys()) == ["lookup"]
+
+
+def test_selective_refresh_rejects_unknown_id(monkeypatch) -> None:
+    refresh = _refresh_module()
+    registry = {
+        "source_catalog": {
+            "src-1": {"citation": "Source 1", "role": "work", "locator": "https://example.com/1"},
+        }
+    }
+    monkeypatch.setattr(
+        "pathlib.Path.read_text",
+        lambda self, encoding="utf-8": json.dumps(registry) if "registry.yaml" in str(self) else "{}",
+    )
+    args = SimpleNamespace(
+        sources="src-unknown",
+        reclassify=False,
+        crossref_delay=0,
+        arxiv_delay=0,
+        web_delay=0,
+    )
+    import pytest
+    with pytest.raises(ValueError, match="unknown source ID"):
+        refresh.build_snapshot(args)
+
+
+def test_selective_refresh_rejects_stale_non_target(monkeypatch) -> None:
+    refresh = _refresh_module()
+    registry = {
+        "source_catalog": {
+            "src-target": {"citation": "Target Source", "role": "work", "locator": "https://example.com/target"},
+            "src-other": {"citation": "Other Source Updated", "role": "work", "locator": "https://example.com/other"},
+        }
+    }
+    # Cached record for src-other has stale fingerprint
+    cached_snapshot = {
+        "records": {
+            "src-target": {
+                "input_fingerprint": refresh.input_fingerprint(registry["source_catalog"]["src-target"]),
+                "lookup_status": "OK",
+                "checked_on": "2026-09-01T00:00:00Z",
+                "related_dois": [],
+            },
+            "src-other": {
+                "input_fingerprint": "old_fingerprint",
+                "lookup_status": "OK",
+                "checked_on": "2026-09-01T00:00:00Z",
+                "related_dois": [],
+            },
+        }
+    }
+    def mock_read(self, encoding="utf-8"):
+        if "registry.yaml" in str(self):
+            return json.dumps(registry)
+        if "source-review.json" in str(self):
+            return json.dumps(cached_snapshot)
+        return "{}"
+
+    monkeypatch.setattr("pathlib.Path.read_text", mock_read)
+    args = SimpleNamespace(
+        sources="src-target",
+        reclassify=False,
+        crossref_delay=0,
+        arxiv_delay=0,
+        web_delay=0,
+    )
+    import pytest
+    with pytest.raises(ValueError, match="stale for current registry.*src-other"):
+        refresh.build_snapshot(args)

@@ -80,11 +80,16 @@ KINDS: dict[str, dict] = {
                 "docs/agent/policy/ledger-coverage.md",
                 "Coverage, landscape, and bridges",
             ),
+            (
+                "docs/agent/policy/ledger-documentation.md",
+                "Source review and human triage",
+            ),
         ],
         "commands": [
             "python3 scripts/generate_registry_views.py",
             "python3 scripts/validate_registry.py",
             "python3 scripts/validate_conjectures.py",
+            "python3 scripts/validate_source_review.py",
         ],
     },
     "generated": {
@@ -157,7 +162,11 @@ def classify(path: str) -> list[str]:
         kinds.append("lean-library")
     elif path in {"AISafetyAtlas.lean", "Main.lean"}:
         kinds.append("lean-library")
-    if path in {"registry.yaml", "conjectures.yaml"}:
+    if path in {
+        "registry.yaml",
+        "conjectures.yaml",
+        "docs/provenance/source-review-dispositions.json",
+    }:
         kinds.append("ledger")
     if path.startswith("docs/status/") or path == "docs/guide/contributor-tasks.md":
         kinds.append("generated")

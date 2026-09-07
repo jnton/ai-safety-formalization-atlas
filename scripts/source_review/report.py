@@ -151,12 +151,52 @@ def _rights_presentation(rights: dict) -> tuple[int, str, str]:
     """Translate rights metadata without turning terms pages into licenses."""
     url = rights["url"].casefold()
     details = rights["details"].casefold()
-    if "creativecommons.org/licenses/by/4.0" in url:
-        return (
-            0,
-            "CC BY 4.0 license",
-            "Direct license for the version of record; reuse is allowed subject to attribution.",
-        )
+
+    if "(vor)" in details:
+        scope = "vor"
+    elif "(am)" in details:
+        scope = "am"
+    elif "(tdm)" in details or any(k in url for k in ("text-and-data-mining", "/tdm", "tdm_license")):
+        scope = "tdm"
+    elif "crossref rights metadata" in details:
+        scope = "unspecified"
+    else:
+        scope = None
+
+    if "creativecommons.org/licenses/by/4.0" in url or "cc by 4.0" in details:
+        name = "CC BY 4.0 license"
+        if "arxiv" in url or "arxiv" in details:
+            return (
+                0,
+                name,
+                "Per-paper CC BY 4.0 license link exposed on the arXiv abstract page.",
+            )
+        if scope == "vor":
+            return (
+                0,
+                name,
+                "Crossref surfaces a CC BY 4.0 license link for the version of record (vor).",
+            )
+        if scope == "am":
+            return (
+                0,
+                name,
+                "Crossref surfaces a CC BY 4.0 license link for the accepted manuscript (am).",
+            )
+        if scope == "tdm":
+            return (
+                2,
+                name,
+                "Crossref surfaces a CC BY 4.0 license link with text-and-data-mining (tdm) scope.",
+            )
+        if scope == "unspecified":
+            return (
+                0,
+                name,
+                "Crossref surfaces a CC BY 4.0 license link with unspecified version scope.",
+            )
+        return (0, name, f"The source page reports: {_md_cell(rights['details'])}")
+
     if "arxiv.org/licenses/nonexclusive-distrib/" in url:
         return (
             1,
@@ -169,58 +209,53 @@ def _rights_presentation(rights: dict) -> tuple[int, str, str]:
             "arXiv assumed distribution license (1991–2003)",
             "arXiv records this as a distribution license for the preprint; it is not a general public reuse license.",
         )
-    if (
-        "text-and-data-mining" in url
-        or "/tdm" in url
-        or "tdm_license" in url
-        or "(tdm)" in details
-    ):
+
+    if scope == "tdm":
         return (
             2,
             "Text-and-data-mining terms",
-            "Crossref marks this link for text and data mining; it is not identified as a general reuse license.",
+            "Crossref marks this link for text and data mining (tdm); it is not identified as a general reuse license.",
         )
-    if "acm.org/publications/policies/copyright_policy" in url:
-        return (
-            1,
-            "ACM copyright policy",
-            "Crossref marks this link for the version of record; no article-specific license name was deposited.",
-        )
-    if "ieeexplore.ieee.org" in url:
-        return (
-            1,
-            "IEEE license information",
-            "Crossref marks this link for the version of record; the applicable terms need reading at the linked page.",
-        )
-    if "onlinelibrary.wiley.com/termsandconditions" in url:
-        return (
-            1,
-            "Wiley terms and conditions",
-            "Crossref marks this link for the version of record; no article-specific license name was deposited.",
-        )
-    if "link.aps.org/licenses/aps-default-license" in url:
-        return (
-            1,
-            "APS default license",
-            "Crossref marks this link for the version of record; its scope needs reading at the linked page.",
-        )
-    if "publishingsupport.iopscience.iop.org/iop-standard" in url:
-        return (
-            1,
-            "IOP standard license",
-            "Crossref marks this link for the version of record; its scope needs reading at the linked page.",
-        )
-    if "cambridge.org/core/terms" in url:
-        return (
-            3,
-            "Cambridge Core terms",
-            "No specific license name or version scope was deposited with Crossref.",
-        )
-    if "(vor)" in details:
+
+    policy_names = [
+        ("acm.org/publications/policies/copyright_policy", "ACM copyright policy"),
+        ("ieeexplore.ieee.org", "IEEE license information"),
+        ("onlinelibrary.wiley.com/termsandconditions", "Wiley terms and conditions"),
+        ("link.aps.org/licenses/aps-default-license", "APS default license"),
+        ("publishingsupport.iopscience.iop.org/iop-standard", "IOP standard license"),
+        ("cambridge.org/core/terms", "Cambridge Core terms"),
+    ]
+    for pattern, policy_name in policy_names:
+        if pattern in url:
+            if scope == "vor":
+                return (
+                    1,
+                    policy_name,
+                    "Crossref surfaces this link for the version of record (vor); check terms at the linked page.",
+                )
+            if scope == "am":
+                return (
+                    1,
+                    policy_name,
+                    "Crossref surfaces this link for the accepted manuscript (am); check terms at the linked page.",
+                )
+            return (
+                3,
+                policy_name,
+                "Crossref surfaces this link with unspecified version scope; check terms at the linked page.",
+            )
+
+    if scope == "vor":
         return (
             1,
             "Publisher terms for the version of record",
-            "Crossref marks this link for the version of record; no article-specific license name was deposited.",
+            "Crossref marks this link for the version of record (vor); check terms at the linked page.",
+        )
+    if scope == "am":
+        return (
+            1,
+            "Publisher terms for the accepted manuscript",
+            "Crossref marks this link for the accepted manuscript (am); check terms at the linked page.",
         )
     if "crossref rights metadata" in details:
         return (
@@ -462,7 +497,7 @@ def render_source_review(
         f"| Version | arXiv-associated DOI | {doi_tot} | {doi_pend} | {doi_rev} | Confirm whether the cited preprint is intentional. |",
         f"| Retrieval | Locator or lookup gap | {lookup_tot} | {lookup_pend} | {lookup_rev} | No metadata or rights result could be obtained. |",
         f"| Metadata | Potential difference | {diff_tot} | {diff_pend} | {diff_rev} | Compare the two values below. |",
-        f"| Metadata | Atlas citation incomplete | {gap_tot} | {gap_pend} | {gap_rev} | The queried record exposes a value the atlas citation does not. |",
+        f"| Metadata | Atlas citation value not extracted | {gap_tot} | {gap_pend} | {gap_rev} | The queried record exposes a value not extracted from the atlas citation. |",
         f"| Rights / license | Rights or license signal found | {len(rights_recorded_rows)} | — | — | The public record exposed a license, publisher terms, or TDM link; it is not a reuse decision. |",
         f"| Rights / license | No machine-readable signal | {no_rights_tot} | {no_rights_pend} | {no_rights_rev} | Neither the queried metadata record nor page exposed an explicit signal. |",
         f"| Metadata | Source field not exposed | {omiss_tot} | {omiss_pend} | {omiss_rev} | The queried record does not provide a comparable value. |",
@@ -472,7 +507,7 @@ def render_source_review(
         "",
         "The automated audit evaluates each catalogued work using one of three public retrieval methods based on its locator:",
         "",
-        "- **Crossref API (`provider: crossref`)**: Used for sources with a DOI (`https://doi.org/...`). Queries the Crossref REST API for publisher metadata (title, authors, venue, volume, issue, pages, publication date), associated preprints/DOIs, and registered license terms (`vor`, `tdm`, Creative Commons).",
+        "- **Crossref API (`provider: crossref`)**: Used for sources with a DOI (`https://doi.org/...`). Queries the Crossref REST API for publisher metadata (title, authors, venue, volume, issue, pages, publication date) and registered license terms (`vor`, `am`, `tdm`, Creative Commons).",
         "- **arXiv API & Abstract Page (`provider: arxiv`)**: Used for sources citing arXiv preprints (`https://arxiv.org/abs/...`). Queries the official arXiv Export API for bibliographic metadata and associated journal DOIs, and inspects the abstract landing page for distribution licenses.",
         "- **Direct HTML & Document Headings (`provider: html`)**: Used for web URLs (institutional archives, book pages, GitHub documents). Fetches the public web page and extracts Dublin Core/Highwire metadata tags, `<article><h1>` document headings, and page titles, scanning for declared rights.",
         "- **Unretrieved / Missing Locator (`MISSING_LOCATOR`)**: Sources without a recorded locator in `registry.yaml` cannot be queried automatically.",

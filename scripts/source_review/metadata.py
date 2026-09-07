@@ -55,18 +55,38 @@ def crossref_external(message: dict[str, Any]) -> dict[str, Any]:
         date = date_from_parts(message.get(key))
         if date:
             break
-    licenses = [
-        license_ for license_ in message.get("license", []) if isinstance(license_, dict)
+    valid_licenses = [
+        license_
+        for license_ in message.get("license", [])
+        if isinstance(license_, dict)
+        and isinstance(license_.get("URL"), str)
+        and license_["URL"].strip()
     ]
-    if licenses and isinstance(licenses[0].get("URL"), str):
-        license_ = licenses[0]
-        details = "Crossref rights metadata"
-        if isinstance(license_.get("content-version"), str):
-            details += f" ({license_['content-version']})"
+
+    def _lic_pref(lic: dict[str, Any]) -> int:
+        ver = str(lic.get("content-version", "")).strip().lower()
+        if ver == "vor":
+            return 0
+        if ver == "am":
+            return 1
+        if not ver or ver == "unspecified":
+            return 2
+        if ver == "tdm":
+            return 4
+        return 3
+
+    if valid_licenses:
+        chosen = min(valid_licenses, key=lambda l: (_lic_pref(l), str(l.get("URL"))))
+        ver = str(chosen.get("content-version", "")).strip().lower()
+        details = (
+            f"Crossref rights metadata ({ver})"
+            if ver
+            else "Crossref rights metadata (unspecified version)"
+        )
         rights = {
             "outcome": RIGHTS_RECORDED,
             "details": details,
-            "url": license_["URL"],
+            "url": chosen["URL"].strip(),
         }
     else:
         rights = {
@@ -232,16 +252,33 @@ def clean_page_title(title: str, url: str) -> str:
 
 def html_external(body: bytes, final_url: str) -> dict[str, Any]:
     parser = parse_source_html(body)
+    has_structured_title = False
     title = parser.first("citation_title", "dc.title", "dcterms.title")
-    if not title and parser.article_headings:
+    if title:
+        has_structured_title = True
+    elif parser.article_headings:
         title = parser.article_headings[0]
-    if not title:
+        has_structured_title = True
+    elif parser.first("og:title"):
         title = parser.first("og:title")
-    if not title and parser.headings:
+    elif parser.headings:
         title = parser.headings[0]
-    if not title:
+    else:
         title = " ".join(part.strip() for part in parser.title_parts if part.strip())
     title = clean_page_title(title, final_url)
+
+    # Recognizable GitHub blob chrome is not bibliographic title metadata
+    parsed_url = urlparse(final_url)
+    if (
+        not has_structured_title
+        and "github.com" in parsed_url.netloc.casefold()
+        and "/blob/" in parsed_url.path
+    ):
+        if (
+            re.search(r"\bat\s+[0-9a-fA-F]{7,40}\s+·\s+[^·]+$", title)
+            or re.search(r"\bat\s+[a-zA-Z0-9_.-]+\s+·\s+[^·]+$", title)
+        ):
+            title = ""
     raw_doi = parser.first("citation_doi", "dc.identifier.doi")
     doi = extract_doi(raw_doi) or clean_doi(raw_doi)
     arxiv_id = extract_arxiv_id(final_url)
@@ -311,12 +348,18 @@ def arxiv_metadata(body: bytes, requested_id: str) -> tuple[dict[str, Any], str]
                 "url": "https://doi.org/" + quote(associated_doi, safe="/"),
             }
         )
+    published = xml_text(entry, f"{ATOM_NAMESPACE}published")
+    updated = xml_text(entry, f"{ATOM_NAMESPACE}updated")
+    is_versioned = bool(re.search(r"v\d+$", requested_id, re.IGNORECASE))
+    date = (updated or published) if is_versioned else (published or updated)
     return (
         {
             "identifier": f"arxiv:{requested_id}",
             "title": xml_text(entry, f"{ATOM_NAMESPACE}title"),
             "authors": authors,
-            "date": xml_text(entry, f"{ATOM_NAMESPACE}published"),
+            "date": date,
+            "published": published,
+            "updated": updated,
             "venue": journal_ref,
             "volume_issue": "",
             "pages": "",

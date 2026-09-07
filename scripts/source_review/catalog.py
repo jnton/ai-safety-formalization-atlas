@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import quote
 
 
 def review_signal_links(source_id: str, rec: dict[str, Any]) -> list[str]:
@@ -11,7 +12,7 @@ def review_signal_links(source_id: str, rec: dict[str, Any]) -> list[str]:
         return []
     status = rec.get("status")
     if status in {"NO_AUTOMATED_FOLLOWUP", "AUTOMATED_CLEAR"}:
-        return [f"[All bibliographic fields match](source-review.md#clear-{source_id})"]
+        return [f"[No automated follow-up flagged](source-review.md#clear-{source_id})"]
     if status == "LOOKUP_FAILED":
         return [f"[Lookup error or retrieval gap](source-review.md#gap-{source_id})"]
 
@@ -29,9 +30,9 @@ def review_signal_links(source_id: str, rec: dict[str, Any]) -> list[str]:
         if outcome == "POSSIBLE_CONFLICT":
             signals.append(f"[Potential {fld} difference](source-review.md#diff-{source_id}-{fld})")
         elif outcome == "MISSING_IN_CATALOGUE":
-            signals.append(f"[Atlas citation missing {fld}](source-review.md#missing-cat-{source_id}-{fld})")
+            signals.append(f"[{fld} not extracted from Atlas citation](source-review.md#missing-cat-{source_id}-{fld})")
         elif outcome == "MISSING_IN_SOURCE":
-            signals.append(f"[Publisher record omits {fld}](source-review.md#missing-src-{source_id}-{fld})")
+            signals.append(f"[Retrieved record did not expose {fld}](source-review.md#missing-src-{source_id}-{fld})")
 
     rights = rec.get("rights", {})
     if rights.get("outcome") == "NO_EXPLICIT_RIGHTS":
@@ -137,7 +138,7 @@ def render_source_catalog(
             )
         locator = source.get("locator")
         if locator:
-            entry.append(f"- **Locator:** [{locator}]({locator})")
+            entry.append(f"- **Locator:** [{locator}](<{quote(locator, safe=':/?&=#%')}>)")
         else:
             entry.append("- **Locator:** —")
         if source.get("retrieved"):

@@ -18,14 +18,16 @@ from .metadata import (
     crossref_external,
     html_external,
 )
+from .comparisons import (
+    classify,
+    metadata_comparisons,
+    unavailable_comparisons,
+)
 from .schema import (
     RIGHTS_UNAVAILABLE,
-    classify,
     extract_arxiv_id,
     extract_doi,
     input_fingerprint,
-    metadata_comparisons,
-    unavailable_comparisons,
     utc_now,
 )
 

@@ -98,11 +98,11 @@ def test_rights_presentation_names_a_license_without_overclaiming_terms() -> Non
     )
 
     assert cc_by[1] == "CC BY 4.0 license"
-    assert "attribution" in cc_by[2]
+    assert "version of record" in cc_by[2]
     assert tdm[1] == "Text-and-data-mining terms"
     assert "not identified as a general reuse license" in tdm[2]
     assert version_of_record[1] == "ACM copyright policy"
-    assert "no article-specific license name" in version_of_record[2]
+    assert "version of record" in version_of_record[2]
     assert arxiv_distribution[1] == "arXiv non-exclusive distribution license"
     assert "not a general public reuse license" in arxiv_distribution[2]
     assert (
@@ -279,6 +279,57 @@ def test_source_catalog_renders_cited_in_atlas_links() -> None:
     }
     catalog = views.render_source_catalog(registry, review, {"conjectures": []})
     assert "- **Cited in Atlas:** [`ST-1`](../formalization-status.md) (*Statement 1*)" in catalog
+
+
+def test_source_catalog_escapes_legacy_doi_locators_and_uses_observational_wording() -> None:
+    refresh = _refresh_module()
+
+    legacy_doi = "https://doi.org/10.1002/(SICI)1234-981X(199707)5:3<305::AID-EURO184>3.0.CO;2-4"
+    registry = {
+        "results": [],
+        "source_catalog": {
+            "src-legacy": {
+                "citation": "Author, “Paper,” 1997.",
+                "role": "work",
+                "locator": legacy_doi,
+            },
+        },
+    }
+    review = {
+        "records": {
+            "src-legacy": {
+                "status": "NO_AUTOMATED_FOLLOWUP",
+            },
+        },
+    }
+    catalog = views.render_source_catalog(registry, review, {"conjectures": []})
+    # Must use percent-encoding for < and > in the link URL
+    assert "%3C305::AID-EURO184%3E" in catalog
+    assert "<https://doi.org/10.1002/" in catalog
+    assert "(https://doi.org/10.1002/(SICI)1234-981X(199707)5:3<" not in catalog
+
+    # Observational wording in review_signal_links
+    clear_signals = refresh.catalog.review_signal_links("src-1", {"status": "NO_AUTOMATED_FOLLOWUP"})
+    assert clear_signals == ["[No automated follow-up flagged](source-review.md#clear-src-1)"]
+
+    missing_cat_signals = refresh.catalog.review_signal_links(
+        "src-2",
+        {
+            "status": "NEEDS_HUMAN",
+            "metadata": [{"field": "title", "outcome": "MISSING_IN_CATALOGUE"}],
+        },
+    )
+    assert missing_cat_signals == ["[title not extracted from Atlas citation](source-review.md#missing-cat-src-2-title)"]
+
+    missing_src_signals = refresh.catalog.review_signal_links(
+        "src-3",
+        {
+            "status": "NEEDS_HUMAN",
+            "metadata": [{"field": "venue", "outcome": "MISSING_IN_SOURCE"}],
+        },
+    )
+    assert missing_src_signals == ["[Retrieved record did not expose venue](source-review.md#missing-src-src-3-venue)"]
+
 
 
 if __name__ == "__main__":

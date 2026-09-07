@@ -1,4 +1,4 @@
-"""Source-catalogue fields, comparison rules, and shared audit constants."""
+"""Source-catalogue fields, citation parsing, and shared audit constants."""
 
 from __future__ import annotations
 
@@ -24,12 +24,16 @@ METADATA_FIELDS = (
     "locator",
 )
 MATCH = "MATCH"
+POSSIBLE_CONFLICT = "POSSIBLE_CONFLICT"
+MISSING_IN_CATALOGUE = "MISSING_IN_CATALOGUE"
+MISSING_IN_SOURCE = "MISSING_IN_SOURCE"
 NOT_APPLICABLE = "NOT_APPLICABLE"
+UNAVAILABLE = "UNAVAILABLE"
 REVIEW_OUTCOMES = {
-    "POSSIBLE_CONFLICT",
-    "MISSING_IN_CATALOGUE",
-    "MISSING_IN_SOURCE",
-    "UNAVAILABLE",
+    POSSIBLE_CONFLICT,
+    MISSING_IN_CATALOGUE,
+    MISSING_IN_SOURCE,
+    UNAVAILABLE,
 }
 RIGHTS_RECORDED = "RIGHTS_RECORDED"
 NO_EXPLICIT_RIGHTS = "NO_EXPLICIT_RIGHTS"
@@ -195,151 +199,3 @@ def catalogue_fields(source: dict[str, Any]) -> dict[str, str]:
         "pages": citation_pages(citation),
         "locator": locator,
     }
-
-
-def text_match(catalogue_value: str, source_value: str) -> str:
-    if not catalogue_value and not source_value:
-        return NOT_APPLICABLE
-    if not catalogue_value:
-        return "MISSING_IN_CATALOGUE"
-    if not source_value:
-        return "MISSING_IN_SOURCE"
-    catalogue_normal = normalize(catalogue_value)
-    source_normal = normalize(source_value)
-    if catalogue_normal == source_normal:
-        return MATCH
-    if catalogue_normal in source_normal or source_normal in catalogue_normal:
-        return MATCH
-    return "POSSIBLE_CONFLICT"
-
-
-def author_match(catalogue_value: str, authors: list[str]) -> str:
-    if not catalogue_value and not authors:
-        return NOT_APPLICABLE
-    if not catalogue_value:
-        return "MISSING_IN_CATALOGUE"
-    if not authors:
-        return "MISSING_IN_SOURCE"
-    catalogue_tokens = set(normalize(catalogue_value).split())
-
-    # Both "Given Family" and "Family, Given" are normal bibliographic
-    # encodings. A surname-level overlap is enough for this screen; it avoids
-    # treating a harmless display-order change as a citation discrepancy.
-    def author_is_represented(author: str) -> bool:
-        tokens = normalize(author).split()
-        return any(len(token) >= 2 and token in catalogue_tokens for token in tokens)
-
-    if all(author_is_represented(author) for author in authors):
-        return MATCH
-    return "POSSIBLE_CONFLICT"
-
-
-def date_match(citation: str, catalogue_value: str, source_value: str) -> str:
-    if not catalogue_value and not source_value:
-        return NOT_APPLICABLE
-    if not catalogue_value:
-        return "MISSING_IN_CATALOGUE"
-    if not source_value:
-        return "MISSING_IN_SOURCE"
-    source_years = YEAR_RE.findall(source_value)
-    if source_years and source_years[0] in citation:
-        return MATCH
-    return "POSSIBLE_CONFLICT"
-
-
-def venue_match(catalogue_value: str, source_value: str) -> str:
-    outcome = text_match(catalogue_value, source_value)
-    if outcome != "POSSIBLE_CONFLICT":
-        return outcome
-    catalogue_tokens = [
-        token
-        for token in normalize(catalogue_value).split()
-        if token not in VENUE_STOP_WORDS
-    ]
-    source_tokens = [
-        token for token in normalize(source_value).split() if token not in VENUE_STOP_WORDS
-    ]
-    if len(catalogue_tokens) >= 2:
-        position = 0
-        for catalogue_token in catalogue_tokens:
-            while position < len(source_tokens) and not source_tokens[position].startswith(
-                catalogue_token
-            ):
-                position += 1
-            if position == len(source_tokens):
-                break
-            position += 1
-        else:
-            return MATCH
-    catalogue_terms = set(catalogue_tokens)
-    source_terms = set(source_tokens)
-    meaningful = catalogue_terms & source_terms - {"the", "of", "in", "and", "for"}
-    return MATCH if len(meaningful) >= 2 else "POSSIBLE_CONFLICT"
-
-
-def metadata_comparisons(
-    source: dict[str, Any], external: dict[str, Any], lookup_ok: bool, final_url: str
-) -> list[dict[str, str]]:
-    catalogue = catalogue_fields(source)
-    external_authors = external.get("authors", [])
-    source_values = {
-        "identifier": display(external.get("identifier")),
-        "title": display(external.get("title")),
-        "authors": "; ".join(external_authors) if external_authors else "—",
-        "date": display(external.get("date")),
-        "venue": display(external.get("venue")),
-        "volume_issue": display(external.get("volume_issue")),
-        "pages": display(external.get("pages")),
-        "locator": display(final_url),
-    }
-    outcomes = {
-        "identifier": text_match(catalogue["identifier"], external.get("identifier", "")),
-        "title": text_match(catalogue["title"], external.get("title", "")),
-        "authors": author_match(catalogue["authors"], external_authors),
-        "date": date_match(source["citation"], catalogue["date"], external.get("date", "")),
-        "venue": venue_match(catalogue["venue"], external.get("venue", "")),
-        "volume_issue": text_match(
-            catalogue["volume_issue"], external.get("volume_issue", "")
-        ),
-        "pages": text_match(catalogue["pages"], external.get("pages", "")),
-        "locator": MATCH if lookup_ok and catalogue["locator"] else "MISSING_IN_CATALOGUE",
-    }
-    return [
-        {
-            "field": field,
-            "catalogue_value": display(catalogue[field]),
-            "source_value": source_values[field],
-            "outcome": outcomes[field],
-        }
-        for field in METADATA_FIELDS
-    ]
-
-
-def unavailable_comparisons(source: dict[str, Any], outcome: str) -> list[dict[str, str]]:
-    catalogue = catalogue_fields(source)
-    return [
-        {
-            "field": field,
-            "catalogue_value": display(catalogue[field]),
-            "source_value": "—",
-            "outcome": outcome if catalogue[field] else NOT_APPLICABLE,
-        }
-        for field in METADATA_FIELDS
-    ]
-
-
-def classify(
-    lookup_status: str,
-    comparisons: list[dict[str, str]],
-    rights: dict[str, str],
-    related_dois: list[dict[str, str]] | None = None,
-) -> str:
-    if lookup_status in {"HTTP_ERROR", "PARSE_ERROR"}:
-        return "LOOKUP_FAILED"
-    if any(comparison["outcome"] in REVIEW_OUTCOMES for comparison in comparisons):
-        return "NEEDS_HUMAN"
-    if rights["outcome"] != RIGHTS_RECORDED:
-        return "NEEDS_HUMAN"
-    if related_dois:
-        return "NEEDS_HUMAN"
-    return NO_AUTOMATED_FOLLOWUP
