@@ -188,8 +188,11 @@ def pages_match(catalogue_value: str, source_value: str) -> str:
             return MATCH
         return "POSSIBLE_CONFLICT"
 
-    if cat_pages[0] == src_pages[0]:
-        return MATCH
+    if len(cat_pages) == 1 and len(src_pages) == 1:
+        if cat_pages[0] == src_pages[0]:
+            return MATCH
+        return "POSSIBLE_CONFLICT"
+
     return "POSSIBLE_CONFLICT"
 
 

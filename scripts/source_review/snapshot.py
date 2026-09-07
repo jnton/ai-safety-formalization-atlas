@@ -30,17 +30,16 @@ REGISTRY = ROOT / "registry.yaml"
 REVIEW = ROOT / "docs/provenance/source-review.json"
 
 
-def load_cached_records() -> dict[str, dict[str, Any]]:
+def load_cached_records(path: Path = REVIEW) -> dict[str, dict[str, Any]]:
     try:
-        snapshot = json.loads(REVIEW.read_text(encoding="utf-8"))
+        snapshot = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
+        return {}
+    if snapshot.get("schema_version") != SCHEMA_VERSION:
         return {}
     records = snapshot.get("records")
     if not isinstance(records, dict):
         return {}
-    # Schema v3 makes associated DOI evidence explicit. Old records had no such
-    # field, which is equivalent to having no captured related DOI; retain their
-    # public lookup evidence rather than re-querying unrelated sources.
     return {
         source_id: {**record, "related_dois": record.get("related_dois", [])}
         for source_id, record in records.items()
@@ -197,7 +196,8 @@ def build_snapshot(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
-def write_snapshot(snapshot: dict[str, Any]) -> None:
-    REVIEW.write_text(
-        json.dumps(snapshot, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
+def write_snapshot(snapshot: dict[str, Any], path: Path = REVIEW) -> None:
+    temp_path = path.with_suffix(".tmp")
+    payload = json.dumps(snapshot, indent=2, ensure_ascii=False) + "\n"
+    temp_path.write_text(payload, encoding="utf-8")
+    temp_path.replace(path)

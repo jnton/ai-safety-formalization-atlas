@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import copy
 import importlib
 import json
@@ -428,7 +429,7 @@ def test_volume_issue_and_pages_numeric_boundaries() -> None:
     assert refresh.pages_match("134", "1341-1390") == "POSSIBLE_CONFLICT"
     assert refresh.pages_match("1341-1390", "1341–1390") == "MATCH"
     assert refresh.pages_match("1341-1390", "1341-90") == "MATCH"
-    assert refresh.pages_match("1341", "1341-1390") == "MATCH"
+    assert refresh.pages_match("1341", "1341-1390") == "POSSIBLE_CONFLICT"
 
 
 def test_author_match_et_al_abbreviation() -> None:
@@ -589,3 +590,269 @@ def test_selective_refresh_rejects_stale_non_target(monkeypatch) -> None:
     import pytest
     with pytest.raises(ValueError, match="stale for current registry.*src-other"):
         refresh.build_snapshot(args)
+
+
+def test_validate_public_url_rejects_unsafe_schemes_and_userinfo() -> None:
+    from source_review.lookups import UnsafeURLError, validate_public_url
+    import pytest
+    with pytest.raises(UnsafeURLError, match="unsupported scheme 'file'"):
+        validate_public_url("file:///etc/passwd")
+    with pytest.raises(UnsafeURLError, match="unsupported scheme 'ftp'"):
+        validate_public_url("ftp://ftp.example.com/file")
+    with pytest.raises(UnsafeURLError, match="userinfo is not permitted"):
+        validate_public_url("https://user:pass@example.com/resource")
+
+
+def test_validate_public_url_rejects_private_and_non_global_ips() -> None:
+    from source_review.lookups import UnsafeURLError, validate_public_url
+    import pytest
+    for bad_url in [
+        "http://127.0.0.1/test",
+        "http://[::1]/test",
+        "http://10.0.0.1/admin",
+        "http://192.168.1.1/",
+        "http://172.16.0.1/",
+        "http://169.254.169.254/latest/meta-data/",
+        "http://localhost/test",
+        "http://service.localhost/",
+    ]:
+        with pytest.raises(UnsafeURLError):
+            validate_public_url(bad_url)
+
+
+def test_validate_public_url_resolves_hostname_and_rejects_private(monkeypatch) -> None:
+    from source_review.lookups import UnsafeURLError, validate_public_url
+    import pytest
+    import socket
+    def mock_getaddrinfo(host, port):
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", 80))]
+    monkeypatch.setattr(socket, "getaddrinfo", mock_getaddrinfo)
+    with pytest.raises(UnsafeURLError, match="loopback address rejected"):
+        validate_public_url("https://example.com/test")
+
+
+def test_validate_public_url_accepts_valid_public_http(monkeypatch) -> None:
+    from source_review.lookups import validate_public_url
+    import socket
+    def mock_getaddrinfo(host, port):
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 80))]
+    monkeypatch.setattr(socket, "getaddrinfo", mock_getaddrinfo)
+    # Must not raise
+    validate_public_url("https://example.com/test")
+
+
+def test_fetch_rejects_redirect_to_private_address() -> None:
+    from urllib.request import Request
+    from source_review.lookups import SafeRedirectHandler, UnsafeURLError
+    import pytest
+    handler = SafeRedirectHandler()
+    req = Request("https://example.com/start")
+    with pytest.raises(UnsafeURLError, match="private address rejected|loopback address rejected"):
+        handler.redirect_request(req, None, 302, "Found", {}, "http://192.168.1.1/secret")
+
+
+def test_fetch_succeeds_on_mocked_public_destination(monkeypatch) -> None:
+    refresh = _refresh_module()
+    import socket
+    def mock_getaddrinfo(host, port):
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 80))]
+    monkeypatch.setattr(socket, "getaddrinfo", mock_getaddrinfo)
+
+    from io import BytesIO
+    class MockResponse:
+        def __init__(self):
+            self.fp = BytesIO(b"public content")
+        def read(self, n):
+            return self.fp.read(n)
+        def geturl(self):
+            return "https://example.com/ok"
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            pass
+
+    monkeypatch.setattr("urllib.request.OpenerDirector.open", lambda self, req, timeout: MockResponse())
+    limiter = refresh.HostRateLimiter(0.0, 0.0, 0.0)
+    body, final_url, err = refresh.fetch("https://example.com/ok", limiter, "test-agent", 1.0, 1000, 0)
+    assert body == b"public content"
+    assert final_url == "https://example.com/ok"
+    assert err == ""
+
+
+def test_refresh_aborts_on_unsafe_locator_without_writing_snapshot(monkeypatch, tmp_path: Path) -> None:
+    from source_review.lookups import UnsafeURLError
+    from source_review.snapshot import build_snapshot
+    import pytest
+
+    snapshot_path = tmp_path / "source-review.json"
+    initial_content = '{"schema_version": 3, "records": {"existing": {}}}'
+    snapshot_path.write_text(initial_content, encoding="utf-8")
+
+    registry = {
+        "source_catalog": {
+            "src-unsafe": {
+                "citation": "Unsafe source, 2026.",
+                "role": "work",
+                "locator": "http://127.0.0.1/admin",
+            }
+        }
+    }
+
+    def mock_read_text(self, encoding="utf-8"):
+        if "registry.yaml" in str(self):
+            return json.dumps(registry)
+        if "source-review.json" in str(self):
+            return initial_content
+        return "{}"
+
+    # Verify no network request is made
+    def mock_network(*args, **kwargs):
+        raise AssertionError("Network request was attempted for an unsafe locator!")
+
+    monkeypatch.setattr("pathlib.Path.read_text", mock_read_text)
+    monkeypatch.setattr("urllib.request.urlopen", mock_network)
+    monkeypatch.setattr("urllib.request.OpenerDirector.open", mock_network)
+
+    args = argparse.Namespace(
+        sources="src-unsafe",
+        force=True,
+        reclassify=False,
+        crossref_delay=0,
+        arxiv_delay=0,
+        web_delay=0,
+        max_age_days=30,
+        timeout=10,
+        max_bytes=1000000,
+        retries=0,
+        user_agent="test-agent",
+        mailto=None,
+    )
+
+    write_called = False
+    def mock_write(snapshot, path=None):
+        nonlocal write_called
+        write_called = True
+
+    monkeypatch.setattr("source_review.snapshot.write_snapshot", mock_write)
+
+    with pytest.raises(UnsafeURLError):
+        build_snapshot(args)
+
+    assert not write_called
+    # The existing snapshot file must remain unchanged
+    assert snapshot_path.read_text(encoding="utf-8") == initial_content
+
+
+def test_pages_match_range_vs_single_page_is_possible_conflict() -> None:
+    refresh = _refresh_module()
+    # Range vs single page
+    assert refresh.pages_match("345–363", "345") == "POSSIBLE_CONFLICT"
+    assert refresh.pages_match("345", "345-363") == "POSSIBLE_CONFLICT"
+
+    # Both express ranges: equivalent dashes and abbreviations
+    assert refresh.pages_match("345–363", "345-363") == "MATCH"
+    assert refresh.pages_match("345-363", "345-63") == "MATCH"
+    assert refresh.pages_match("345–363", "345–63") == "MATCH"
+    assert refresh.pages_match("345-363", "345-364") == "POSSIBLE_CONFLICT"
+
+    # Both single pages
+    assert refresh.pages_match("345", "345") == "MATCH"
+    assert refresh.pages_match("345", "346") == "POSSIBLE_CONFLICT"
+
+
+def test_load_cached_records_rejects_incompatible_schema(tmp_path: Path) -> None:
+    from source_review.snapshot import load_cached_records
+    cache_file = tmp_path / "cache.json"
+    cache_file.write_text(
+        json.dumps({
+            "schema_version": 2,
+            "records": {
+                "src-1": {
+                    "lookup_status": "OK",
+                    "checked_on": "2026-09-01T00:00:00Z",
+                }
+            }
+        }),
+        encoding="utf-8",
+    )
+    loaded = load_cached_records(cache_file)
+    assert loaded == {}
+
+    cache_file.write_text(
+        json.dumps({
+            "schema_version": 3,
+            "records": {
+                "src-1": {
+                    "lookup_status": "OK",
+                    "checked_on": "2026-09-01T00:00:00Z",
+                }
+            }
+        }),
+        encoding="utf-8",
+    )
+    loaded = load_cached_records(cache_file)
+    assert "src-1" in loaded
+
+
+def test_write_snapshot_is_atomic(tmp_path: Path) -> None:
+    refresh = _refresh_module()
+    target_file = tmp_path / "snapshot.json"
+    snapshot = {"schema_version": 3, "records": {}}
+    refresh.write_snapshot(snapshot, target_file)
+    assert target_file.exists()
+    assert json.loads(target_file.read_text(encoding="utf-8")) == snapshot
+    assert not target_file.with_suffix(".tmp").exists()
+
+
+def test_refresh_cli_rejects_sources_with_reclassify() -> None:
+    cmd = [
+        sys.executable,
+        str(ROOT / "scripts/refresh_source_review.py"),
+        "--sources", "src-1",
+        "--reclassify",
+    ]
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    assert res.returncode != 0
+    assert "--sources and --reclassify cannot be used together" in res.stderr
+
+
+def test_report_escapes_adversarial_external_metadata() -> None:
+    from source_review.report import _safe_md_text, _safe_external_url, _rights_presentation
+
+    adv_title = "[Link](https://example.com) ![img](https://example.com/image.png) <script>alert(1)</script> | pipe"
+    rendered = _safe_md_text(adv_title)
+    assert "\\[Link\\]" in rendered
+    assert "!\\[img\\]" in rendered
+    assert "&lt;script&gt;" in rendered
+    assert "\\|" in rendered
+    assert "[Link](" not in rendered
+    assert "![img](" not in rendered
+    assert "<script>" not in rendered
+
+    cases = {
+        "_italic_": ("\\_italic\\_", "_italic_"),
+        "**bold**": ("\\*\\*bold\\*\\*", "**bold**"),
+        "`code`": ("\\`code\\`", "`code`"),
+        "~~strike~~": ("\\~\\~strike\\~\\~", "~~strike~~"),
+        "<https://example.com>": ("&lt;https\\://example.com&gt;", "<https://example.com>"),
+        "https://evil.example/path": ("https\\://evil.example/path", "https://evil.example/path"),
+        "http://evil.example": ("http\\://evil.example", "http://evil.example"),
+        "www.evil.example": ("www\\.evil.example", "www.evil.example"),
+        "attacker@example.com": ("attacker\\@example.com", "attacker@example.com"),
+    }
+    for raw_input, (expected_escaped, active_syntax) in cases.items():
+        escaped = _safe_md_text(raw_input)
+        assert escaped == expected_escaped
+        assert active_syntax not in escaped
+
+    assert _safe_external_url("javascript:alert(1)") is None
+    assert _safe_external_url("file:///etc/passwd") is None
+    assert _safe_external_url("https://example.com/ok") == "https://example.com/ok"
+
+    rights = {
+        "outcome": "RIGHTS_RECORDED",
+        "details": "Custom rights statement",
+        "url": "javascript:alert(1)",
+    }
+    _, _, scope = _rights_presentation(rights)
+    assert "<script>" not in scope

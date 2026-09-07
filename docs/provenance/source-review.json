@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "generated_at": "2026-09-07T04:39:46Z",
+  "generated_at": "2026-09-07T05:28:06Z",
   "source_fingerprint": "8880302fa424689b39e35031505ece2a13dbf1437775644e9722e63a14c0baf3",
   "records": {
     "abramsky-zvesper-2010-lawvere-bk": {
@@ -3890,7 +3890,7 @@
           "field": "pages",
           "catalogue_value": "345–363",
           "source_value": "345",
-          "outcome": "MATCH"
+          "outcome": "POSSIBLE_CONFLICT"
         },
         {
           "field": "locator",

@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 import hashlib
 import json
 from pathlib import Path
@@ -315,6 +315,10 @@ def validate_dispositions(
             reviewed_on = text(entry.get("reviewed_on"), f"{source_id}/{finding_id} reviewed_on")
             if not ISO_DATE.fullmatch(reviewed_on):
                 fail(f"{source_id}/{finding_id} reviewed_on must be an ISO date YYYY-MM-DD ({reviewed_on!r})")
+            try:
+                date.fromisoformat(reviewed_on)
+            except ValueError:
+                fail(f"{source_id}/{finding_id} reviewed_on must be a valid calendar date ({reviewed_on!r})")
 
             text(entry.get("reason"), f"{source_id}/{finding_id} reason")
 

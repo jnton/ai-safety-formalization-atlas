@@ -2,11 +2,42 @@
 
 from __future__ import annotations
 
-from urllib.parse import quote
+import re
+from urllib.parse import quote, urlparse
 
 
 def _md_cell(text: object) -> str:
     return str(text).replace("|", "\\|").replace("\n", " ")
+
+
+def _safe_md_text(text: object) -> str:
+    """Render external untrusted text as literal Markdown content without active links/images/formatting/HTML."""
+    s = str(text or "").replace("\r\n", " ").replace("\n", " ").strip()
+    if not s:
+        return "—"
+    s = s.replace("\\", "\\\\")
+    s = s.replace("|", "\\|")
+    s = s.replace("[", "\\[").replace("]", "\\]")
+    s = s.replace("<", "&lt;").replace(">", "&gt;")
+    s = s.replace("*", "\\*")
+    s = s.replace("_", "\\_")
+    s = s.replace("`", "\\`")
+    s = s.replace("~", "\\~")
+    s = s.replace("@", "\\@")
+    s = re.sub(r"(?i)\b(https?):(?=//)", r"\1\\:", s)
+    s = re.sub(r"(?i)\bwww\.", r"www\\.", s)
+    return s
+
+
+def _safe_external_url(url: str | None) -> str | None:
+    """Accept only valid HTTP(S) external URLs; reject all other schemes."""
+    if not url or not isinstance(url, str):
+        return None
+    url_clean = url.strip()
+    parsed = urlparse(url_clean)
+    if parsed.scheme.lower() not in {"http", "https"} or not parsed.netloc:
+        return None
+    return quote(url_clean, safe=":/?&=#%~_+-")
 
 
 def _short_citation(citation: str, limit: int = 120) -> str:
@@ -50,23 +81,26 @@ def _work_source_row(
 
 def _checked_record_link(record: dict) -> str:
     checked_url = record.get("checked_url")
-    if not checked_url:
+    safe_url = _safe_external_url(checked_url)
+    if not safe_url:
         return "—"
     label = {
         "arxiv": "arXiv API",
         "crossref": "Crossref",
         "html": "Source page",
     }.get(record.get("provider", ""), "Queried record")
-    return f"[{label}]({checked_url})"
+    return f"[{label}]({safe_url})"
 
 
 def _arxiv_methods_links(record: dict, source: dict) -> str:
     links: list[str] = []
-    if record.get("checked_url"):
-        links.append(f"[arXiv API]({record['checked_url']})")
+    safe_checked = _safe_external_url(record.get("checked_url"))
+    if safe_checked:
+        links.append(f"[arXiv API]({safe_checked})")
     locator = source.get("locator", "")
-    if locator and "arxiv.org" in locator:
-        links.append(f"[Abstract page](<{quote(locator, safe=':/?&=#%')}>)")
+    safe_loc = _safe_external_url(locator)
+    if safe_loc and "arxiv.org" in safe_loc:
+        links.append(f"[Abstract page](<{safe_loc}>)")
     return " · ".join(links) if links else _checked_record_link(record)
 
 
@@ -129,7 +163,7 @@ def _metadata_finding_rows(
                     f"| {_source_catalog_link(source_id, anchor_id)} | {_source_locator_link(source)} | "
                     f"`{fld}` | "
                     f"{_md_cell(comparison['catalogue_value'])} | "
-                    f"{_md_cell(comparison['source_value'])} | {checked_record} | {disp_text} |",
+                    f"{_safe_md_text(comparison['source_value'])} | {checked_record} | {disp_text} |",
                 )
             )
     return [row for _, _, _, row in sorted(rows)]
@@ -156,7 +190,7 @@ def _rights_presentation(rights: dict) -> tuple[int, str, str]:
         scope = "vor"
     elif "(am)" in details:
         scope = "am"
-    elif "(tdm)" in details or any(k in url for k in ("text-and-data-mining", "/tdm", "tdm_license")):
+    elif "(tdm)" in details:
         scope = "tdm"
     elif "crossref rights metadata" in details:
         scope = "unspecified"
@@ -195,7 +229,7 @@ def _rights_presentation(rights: dict) -> tuple[int, str, str]:
                 name,
                 "Crossref surfaces a CC BY 4.0 license link with unspecified version scope.",
             )
-        return (0, name, f"The source page reports: {_md_cell(rights['details'])}")
+        return (0, name, f"The source page reports: {_safe_md_text(rights['details'])}")
 
     if "arxiv.org/licenses/nonexclusive-distrib/" in url:
         return (
@@ -210,12 +244,27 @@ def _rights_presentation(rights: dict) -> tuple[int, str, str]:
             "arXiv records this as a distribution license for the preprint; it is not a general public reuse license.",
         )
 
-    if scope == "tdm":
-        return (
-            2,
-            "Text-and-data-mining terms",
-            "Crossref marks this link for text and data mining (tdm); it is not identified as a general reuse license.",
+    is_tdm = scope == "tdm" or any(
+        k in url
+        for k in (
+            "text-and-data-mining",
+            "/tdm",
+            "tdm_license",
+            "tdm-license",
+            "springer.com/tdm",
+            "elsevier.com/tdm",
         )
+    )
+    if is_tdm:
+        if scope == "vor":
+            desc = "Crossref reports this TDM link for the version of record (vor); it is not identified as a general reuse license."
+        elif scope == "am":
+            desc = "Crossref reports this TDM link for the accepted manuscript (am); it is not identified as a general reuse license."
+        elif scope == "unspecified":
+            desc = "Crossref reports this TDM link with unspecified version scope; it is not identified as a general reuse license."
+        else:
+            desc = "Crossref marks this link for text and data mining (tdm); it is not identified as a general reuse license."
+        return (2, "Text-and-data-mining terms", desc)
 
     policy_names = [
         ("acm.org/publications/policies/copyright_policy", "ACM copyright policy"),
@@ -266,7 +315,7 @@ def _rights_presentation(rights: dict) -> tuple[int, str, str]:
     return (
         4,
         "Rights or license statement on the source page",
-        f"The source page reports: {_md_cell(rights['details'])}",
+        f"The source page reports: {_safe_md_text(rights['details'])}",
     )
 
 
@@ -285,8 +334,9 @@ def _rights_recorded_rows(
         rights = record["rights"]
         order, result, scope = _rights_presentation(rights)
         scope_text = _md_cell(scope)
-        if rights.get("url"):
-            scope_text += f" ([terms]({rights['url']}))"
+        safe_url = _safe_external_url(rights.get("url"))
+        if safe_url:
+            scope_text += f" ([terms]({safe_url}))"
         if record.get("provider") == "arxiv":
             checked_record = _arxiv_methods_links(record, source)
         else:
@@ -347,17 +397,21 @@ def _related_doi_rows(
         for related in record.get("related_dois", []):
             doi = related["doi"]
             crossref_url = f"https://api.crossref.org/v1/works/{quote(doi, safe='')}"
-            lookup_methods = f"{_checked_record_link(record)} · [Crossref]({crossref_url})"
+            safe_cr_url = _safe_external_url(crossref_url)
+            cr_link = f"[Crossref]({safe_cr_url})" if safe_cr_url else "Crossref"
+            lookup_methods = f"{_checked_record_link(record)} · {cr_link}"
             disp_order, disp_text = _disposition_cell(
                 source_id, f"related_doi:{doi.lower()}", dispositions
             )
+            safe_related_url = _safe_external_url(related.get("url"))
+            doi_cell = f"[doi:{_md_cell(doi)}]({safe_related_url})" if safe_related_url else f"doi:{_md_cell(doi)}"
             rows.append(
                 (
                     disp_order,
                     source_id,
                     doi,
                     f"| {_source_catalog_link(source_id, f'version-{source_id}')} | {_source_locator_link(source)} | "
-                    f"[doi:{_md_cell(doi)}]({related['url']}) | "
+                    f"{doi_cell} | "
                     f"{lookup_methods} | {disp_text} |",
                 )
             )
@@ -375,7 +429,7 @@ def _lookup_rows(
         record = records.get(source_id)
         if not record or record["lookup_status"] == "OK":
             continue
-        extra_note = _md_cell(record["notes"])
+        extra_note = _safe_md_text(record["notes"])
         if "Crossref returned HTTP 404; checked the source locator instead" in record.get("notes", ""):
             locator = source.get("locator", "")
             doi = ""
@@ -386,9 +440,12 @@ def _lookup_rows(
             links = []
             if doi:
                 crossref_url = f"https://api.crossref.org/v1/works/{quote(doi, safe='')}"
-                links.append(f"[Crossref]({crossref_url})")
-            if locator:
-                links.append(f"[Source page](<{quote(locator, safe=':/?&=#%')}>)")
+                safe_cr_url = _safe_external_url(crossref_url)
+                if safe_cr_url:
+                    links.append(f"[Crossref]({safe_cr_url})")
+            safe_locator = _safe_external_url(locator)
+            if safe_locator:
+                links.append(f"[Source page](<{safe_locator}>)")
             if links:
                 extra_note += f" ({' · '.join(links)})"
         disp_order, disp_text = _disposition_cell(source_id, "lookup", dispositions)
@@ -483,8 +540,9 @@ def render_source_review(
         f"{lookup_summary}; it makes no legal determination about reuse.",
         "",
         f"Snapshot generated **{review['generated_at']}** · **{len(work_sources)}** works "
-        "evaluated. Unchanged records are reused only while their own check date is within "
-        "the refresh cache window.",
+        "evaluated. Full refreshes reuse compatible records within the cache-age window; "
+        "selective refreshes intentionally preserve compatible non-target records. "
+        "`checked_on` is the timestamp of the individual source query.",
         "",
         "**Cited material** is the locator currently recorded by the atlas. **Lookup record** "
         "is the public record used for the automatic comparison, so both versions are one click "
@@ -507,7 +565,7 @@ def render_source_review(
         "",
         "The automated audit evaluates each catalogued work using one of three public retrieval methods based on its locator:",
         "",
-        "- **Crossref API (`provider: crossref`)**: Used for sources with a DOI (`https://doi.org/...`). Queries the Crossref REST API for publisher metadata (title, authors, venue, volume, issue, pages, publication date) and registered license terms (`vor`, `am`, `tdm`, Creative Commons).",
+        "- **Crossref API (`provider: crossref`)**: Used when a DOI can be extracted from the locator or citation. Queries the Crossref REST API for publisher metadata (title, authors, venue, volume, issue, pages, publication date) and registered license terms (`vor`, `am`, `tdm`, Creative Commons).",
         "- **arXiv API & Abstract Page (`provider: arxiv`)**: Used for sources citing arXiv preprints (`https://arxiv.org/abs/...`). Queries the official arXiv Export API for bibliographic metadata and associated journal DOIs, and inspects the abstract landing page for distribution licenses.",
         "- **Direct HTML & Document Headings (`provider: html`)**: Used for web URLs (institutional archives, book pages, GitHub documents). Fetches the public web page and extracts Dublin Core/Highwire metadata tags, `<article><h1>` document headings, and page titles, scanning for declared rights.",
         "- **Unretrieved / Missing Locator (`MISSING_LOCATOR`)**: Sources without a recorded locator in `registry.yaml` cannot be queried automatically.",
@@ -525,7 +583,7 @@ def render_source_review(
         *(
             related_doi_rows
             or [
-                "| — | — | — | arXiv did not report an associated DOI for a retrieved preprint. | — |"
+                "| — | — | Every cited preprint record has been checked; none reports an associated DOI. | — | — |"
             ]
         ),
         "",
@@ -544,7 +602,10 @@ def render_source_review(
         "|---|---|---|---|---|---|---|",
         *(difference_rows or ["| — | — | — | No potential metadata differences. | — | — | — |"]),
         "",
-        "## Values missing from the atlas citation",
+        "## Values not extracted from the Atlas citation",
+        "",
+        "Reviewers should determine whether a retrieved value is genuinely absent or merely not",
+        "extracted by the parser before changing `registry.yaml`.",
         "",
         "| Source | Cited material | Field | Atlas citation value | Retrieved-record value | Lookup record | Human disposition |",
         "|---|---|---|---|---|---|---|",

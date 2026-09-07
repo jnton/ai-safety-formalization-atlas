@@ -27,7 +27,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--force",
         action="store_true",
-        help="re-query every work source instead of reusing matching cached records",
+        help="re-query selected sources, or all works when --sources is omitted",
     )
     parser.add_argument(
         "--sources",
@@ -64,6 +64,8 @@ def parse_args() -> argparse.Namespace:
     args = parser.parse_args()
     if args.force and args.reclassify:
         parser.error("--force and --reclassify cannot be used together")
+    if args.sources and args.reclassify:
+        parser.error("--sources and --reclassify cannot be used together")
     if min(args.crossref_delay, args.arxiv_delay, args.web_delay, args.max_age_days) < 0:
         parser.error("delays and max-age-days must be non-negative")
     if args.timeout <= 0 or args.max_bytes <= 0 or args.retries < 0:

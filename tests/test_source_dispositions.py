@@ -331,6 +331,36 @@ def test_dashboard_pending_reviewed_rendering_and_ordering() -> None:
     assert "| Potential difference | 2 | 1 | 1 |" in report
 
 
+def test_disposition_rejects_impossible_calendar_date() -> None:
+    source = _sample_source()
+    record = _sample_record()
+    findings = actionable_findings("src-1", source, record)
+    title_fp = compute_finding_fingerprint(findings["metadata:title"])
+
+    invalid_date_doc = {
+        "schema_version": 1,
+        "dispositions": {
+            "src-1": {
+                "metadata:title": {
+                    "finding_fingerprint": title_fp,
+                    "status": "REVIEWED_NO_CHANGE",
+                    "reason": "Valid reason",
+                    "reviewed_by": "human-reviewer",
+                    "reviewed_on": "2026-99-99",
+                }
+            }
+        },
+    }
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".json") as tmp:
+        tmp.write(json.dumps(invalid_date_doc))
+        tmp.flush()
+        try:
+            validator.validate_dispositions({"src-1": source}, {"src-1": record}, Path(tmp.name))
+            assert False, "Expected validator to exit on impossible calendar date"
+        except SystemExit:
+            pass
+
+
 if __name__ == "__main__":
     for name, func in list(globals().items()):
         if name.startswith("test_") and callable(func):

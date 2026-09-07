@@ -642,7 +642,7 @@ For the metadata and rights audit comparison, see [`source-review.md`](source-re
 - **Survey index:** Ref. #38 in Brcic & Yampolskiy (2023)
 - **Locator:** [https://doi.org/10.2307/2371045](<https://doi.org/10.2307/2371045>)
 - **Cited in Atlas:** [`BY-014`](../formalization-status.md) (*Undecidability*)
-- **Audit check:** [No machine-readable license found](source-review.md#rights-survey-ref-038)
+- **Audit check:** [Potential pages difference](source-review.md#diff-survey-ref-038-pages); [No machine-readable license found](source-review.md#rights-survey-ref-038)
 
 <a id="survey-ref-039"></a>
 ### `survey-ref-039`

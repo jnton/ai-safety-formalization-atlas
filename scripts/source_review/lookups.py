@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import json
+import socket
 import time
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode, urlparse
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 from xml.etree import ElementTree
 
 from .metadata import (
@@ -66,6 +68,76 @@ def retry_after_seconds(value: str | None) -> float:
         return 0.0
 
 
+class UnsafeURLError(ValueError):
+    """Raised when a URL targets a non-public, non-HTTP, or non-global destination."""
+
+
+def _check_ip_public(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> None:
+    if ip.is_loopback:
+        raise UnsafeURLError(f"loopback address rejected ({ip})")
+    if ip.is_private:
+        raise UnsafeURLError(f"private address rejected ({ip})")
+    if ip.is_link_local:
+        raise UnsafeURLError(f"link-local address rejected ({ip})")
+    if ip.is_multicast:
+        raise UnsafeURLError(f"multicast address rejected ({ip})")
+    if ip.is_reserved:
+        raise UnsafeURLError(f"reserved address rejected ({ip})")
+    if ip.is_unspecified:
+        raise UnsafeURLError(f"unspecified address rejected ({ip})")
+    if not ip.is_global:
+        raise UnsafeURLError(f"non-global address rejected ({ip})")
+
+
+def validate_public_url(url: str) -> None:
+    parsed = urlparse(url)
+    scheme = parsed.scheme.lower()
+    if scheme not in {"http", "https"}:
+        raise UnsafeURLError(f"unsupported scheme {parsed.scheme!r}")
+    if parsed.username is not None or parsed.password is not None:
+        raise UnsafeURLError("userinfo is not permitted in URL")
+    hostname = parsed.hostname
+    if not hostname:
+        raise UnsafeURLError("missing host in URL")
+
+    hostname_clean = hostname.rstrip(".").lower()
+    if hostname_clean == "localhost" or hostname_clean.endswith(".localhost"):
+        raise UnsafeURLError(f"localhost destination rejected ({hostname})")
+
+    try:
+        ip = ipaddress.ip_address(hostname_clean)
+        _check_ip_public(ip)
+        return
+    except ValueError:
+        pass
+
+    try:
+        addrinfo = socket.getaddrinfo(hostname_clean, None)
+    except socket.gaierror as err:
+        raise UnsafeURLError(f"could not resolve host {hostname_clean}: {err}") from err
+
+    if not addrinfo:
+        raise UnsafeURLError(f"no addresses resolved for {hostname_clean}")
+
+    for res in addrinfo:
+        ip_str = res[4][0]
+        try:
+            ip = ipaddress.ip_address(ip_str)
+            _check_ip_public(ip)
+        except ValueError as err:
+            raise UnsafeURLError(f"invalid resolved address {ip_str}: {err}") from err
+
+
+class SafeRedirectHandler(HTTPRedirectHandler):
+    """Ensure HTTP redirect targets remain within public HTTP(S) destinations."""
+
+    def redirect_request(
+        self, req: Request, fp: Any, code: int, msg: str, headers: Any, newurl: str
+    ) -> Request | None:
+        validate_public_url(newurl)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
 def fetch(
     url: str,
     limiter: HostRateLimiter,
@@ -75,6 +147,9 @@ def fetch(
     retries: int,
 ) -> tuple[bytes | None, str, str]:
     """Return body, final URL, error; retry only transient public HTTP failures."""
+    validate_public_url(url)
+
+    opener = build_opener(SafeRedirectHandler())
     for attempt in range(retries + 1):
         limiter.wait(url)
         request = Request(
@@ -88,7 +163,7 @@ def fetch(
             },
         )
         try:
-            with urlopen(request, timeout=timeout) as response:
+            with opener.open(request, timeout=timeout) as response:
                 body = response.read(max_bytes + 1)
                 if len(body) > max_bytes:
                     return None, response.geturl(), f"response exceeded {max_bytes} byte limit"
@@ -98,6 +173,8 @@ def fetch(
             transient = error.code in {429, 500, 502, 503, 504}
             retry_after = retry_after_seconds(error.headers.get("Retry-After"))
         except URLError as error:
+            if isinstance(error.reason, UnsafeURLError):
+                raise error.reason
             message = f"network error: {error.reason}"
             transient = True
             retry_after = 0.0
